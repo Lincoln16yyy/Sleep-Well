@@ -1,4 +1,4 @@
-# Sleep Well
+# Noite Boa
 
 App web para **registrar o sono, entender o padrão e criar consistência de horários**. Projeto autoral de Lincoln, inspirado na ideia do projeto integrador "Meu Soninho" (IFPI Picos), com código, nome e identidade próprios.
 

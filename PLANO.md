@@ -1,4 +1,4 @@
-# Plano do Projeto (nome provisório: Sleep Well)
+# Plano do Projeto (nome: Noite Boa)
 
 > Documento vivo. Mudou uma decisão? Atualize aqui no mesmo PR. Agentes de IA tratam este arquivo como a fonte da verdade do escopo.
 

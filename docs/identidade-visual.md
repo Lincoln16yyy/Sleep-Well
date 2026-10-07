@@ -1,14 +1,14 @@
-# Identidade visual: Sleep Well
+# Identidade visual: Noite Boa
 
 ![Quadro da marca](brand-board.png)
 
 ## Conceito
-**Sleep Well** ("durma bem") diz o objetivo do app logo no nome. A lua em formato de berço abraça uma estrela: o sono como algo que se cuida. O visual é noturno, macio e calmo, sem parecer infantil.
+**Noite Boa** descreve exatamente o resultado que o app busca entregar. O nome combina com a lua em formato de berço que abraça uma estrela: o sono como algo que se cuida. O visual é noturno, macio e calmo, sem parecer infantil.
 
 - **Personalidade:** calma, acolhedora, confiável, simples.
 - **Tom de voz:** próximo e gentil, sem culpa ("Que tal dormir um pouco mais cedo hoje?" em vez de "Você dormiu mal").
 - **Slogan:** *Durma melhor, no seu ritmo.*
-- **Atenção ao nome:** "Sleep Well" é uma expressão comum em inglês, então é provável que existam outros apps e sites com o mesmo nome. Antes de publicar, confira domínio, nome no GitHub, lojas de apps e INPI, e considere um complemento para se destacar (ex.: "Sleep Well - Diário do Sono").
+- **Atenção ao nome:** antes de publicar, confira domínio, nome no GitHub, lojas de apps e INPI. Nomes curtos costumam já estar em uso, e um complemento ajuda a se destacar nas buscas (ex.: "Noite Boa - Diário do Sono").
 
 ## Logo
 | Arquivo | Uso |
