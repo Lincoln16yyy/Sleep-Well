@@ -1,0 +1,37 @@
+name: Tarefa (pronta para agente)
+description: Tarefa pequena e bem definida que uma pessoa ou agente de IA possa executar em um único PR
+title: "[tipo]: "
+labels: ["agente:ok"]
+body:
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto
+      description: Por que isso existe? Link para trecho do PLANO.md se houver.
+    validations:
+      required: true
+  - type: textarea
+    id: tarefas
+    attributes:
+      label: Tarefas
+      description: Lista objetiva do que fazer.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critérios de aceite
+      description: Como saber que está pronto? Deve ser verificável.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: fora
+    attributes:
+      label: Fora do escopo
+      description: O que NÃO deve ser feito nesta issue.
+  - type: textarea
+    id: dicas
+    attributes:
+      label: Arquivos prováveis e como testar

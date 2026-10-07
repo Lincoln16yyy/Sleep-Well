@@ -1,0 +1,20 @@
+name: Ideia de funcionalidade
+description: Sugerir algo novo (será avaliado e quebrado em tarefas)
+title: "[ideia]: "
+labels: ["tipo:feat"]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qual problema isso resolve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Como você imagina a solução?
+  - type: dropdown
+    id: fase
+    attributes:
+      label: Fase
+      options: ["MVP", "Pós-MVP", "Não sei"]

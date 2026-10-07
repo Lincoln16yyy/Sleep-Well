@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Java 21
+        if: hashFiles('backend/pom.xml') != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Build e testes (backend)
+        if: hashFiles('backend/pom.xml') != ''
+        working-directory: backend
+        run: mvn -B verify
+      - name: Backend ainda não criado
+        if: hashFiles('backend/pom.xml') == ''
+        run: echo "backend/pom.xml não existe ainda, pulando."
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Node 20
+        if: hashFiles('frontend/package-lock.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Instalar dependências
+        if: hashFiles('frontend/package-lock.json') != ''
+        working-directory: frontend
+        run: npm ci
+      - name: Lint, testes e build (frontend)
+        if: hashFiles('frontend/package-lock.json') != ''
+        working-directory: frontend
+        run: |
+          npm run lint --if-present
+          npm test --if-present
+          npm run build
+      - name: Frontend ainda não criado
+        if: hashFiles('frontend/package-lock.json') == ''
+        run: echo "frontend/package-lock.json não existe ainda, pulando."

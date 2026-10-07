@@ -1,0 +1,13 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: sono
+      POSTGRES_USER: sono
+      POSTGRES_PASSWORD: sono_dev_only
+    ports:
+      - "5432:5432"
+    volumes:
+      - sono_pgdata:/var/lib/postgresql/data
+volumes:
+  sono_pgdata:
