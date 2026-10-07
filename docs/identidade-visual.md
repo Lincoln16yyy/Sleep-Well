@@ -1,14 +1,14 @@
-# Identidade visual: Lull
+# Identidade visual: Noite Boa
 
 ![Quadro da marca](brand-board.png)
 
 ## Conceito
-**Lull** vem de *lullaby* (cantiga de ninar) e do verbo que significa acalmar, embalar para dormir. É curto, fácil de falar e combina com a lua em formato de berço que abraça uma estrela: o sono como algo que se cuida. O visual é noturno, macio e calmo, sem parecer infantil.
+**Noite Boa** descreve exatamente o resultado que o app busca entregar. O nome combina com a lua em formato de berço que abraça uma estrela: o sono como algo que se cuida. O visual é noturno, macio e calmo, sem parecer infantil.
 
 - **Personalidade:** calma, acolhedora, confiável, simples.
 - **Tom de voz:** próximo e gentil, sem culpa ("Que tal dormir um pouco mais cedo hoje?" em vez de "Você dormiu mal").
 - **Slogan:** *Durma melhor, no seu ritmo.*
-- **Atenção ao nome:** antes de publicar, confira domínio, nome no GitHub, lojas de apps e INPI. Nomes curtos costumam já estar em uso, e um complemento ajuda a se destacar nas buscas (ex.: "Lull - Diário do Sono").
+- **Atenção ao nome:** antes de publicar, confira domínio, nome no GitHub, lojas de apps e INPI. Nomes curtos costumam já estar em uso, e um complemento ajuda a se destacar nas buscas (ex.: "Noite Boa - Diário do Sono").
 
 ## Logo
 | Arquivo | Uso |
