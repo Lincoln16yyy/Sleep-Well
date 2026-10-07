@@ -12,7 +12,7 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Java 21
         if: hashFiles('backend/pom.xml') != ''
         uses: actions/setup-java@v4
@@ -31,7 +31,7 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Node 20
         if: hashFiles('frontend/package-lock.json') != ''
         uses: actions/setup-node@v4
