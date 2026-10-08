@@ -36,4 +36,12 @@ public class SleepService {
         sleepLogRepository.save(log);
         return new SleepLogResponse(log.getId(), log.getSleepStart(), log.getSleepEnd(), log.getQuality(), log.getNotes());
     }
+
+    public org.springframework.data.domain.Page<SleepLogResponse> list(String email, java.time.OffsetDateTime from, java.time.OffsetDateTime to, int page, int size) {
+        br.dev.noiteboa.auth.User user = userRepository.findByEmailIgnoreCase(email)
+            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED));
+        var pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        return sleepLogRepository.search(user.getId(), from, to, pageable)
+            .map(s -> new SleepLogResponse(s.getId(), s.getSleepStart(), s.getSleepEnd(), s.getQuality(), s.getNotes()));
+    }
 }

@@ -25,4 +25,17 @@ public class SleepController {
         SleepLogResponse response = sleepService.create(email, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @org.springframework.web.bind.annotation.GetMapping("/api/sleep-logs")
+    public ResponseEntity<org.springframework.data.domain.Page<SleepLogResponse>> list(
+            Authentication authentication,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) java.time.OffsetDateTime from,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) java.time.OffsetDateTime to,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "20") int size) {
+        String email = (String) authentication.getPrincipal();
+        int cappedSize = Math.min(size, 100);
+        var result = sleepService.list(email, from, to, page, cappedSize);
+        return ResponseEntity.ok(result);
+    }
 }
