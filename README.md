@@ -41,11 +41,21 @@ App web para **registrar o sono, entender o padrão e criar consistência de hor
 | `tipo:*`, `area:*`, `prio:*` | Organização |
 | `mvp` / `pos-mvp` | Fase |
 
+## Estrutura
+
+```
+backend/    Java 21 + Spring Boot 3 (API REST)        -> criado na issue #6
+frontend/   React + Vite (PWA)                        -> criado na issue #18
+docs/       ADRs, identidade visual e documentação
+scripts/    Scripts de setup do repositório
+```
+
 ## Rodando localmente
 
 > Será preenchido na issue "Validar ambiente local" e atualizado conforme o back-end e o front-end forem criados.
 
 ```bash
+cp .env.example .env   # variáveis de ambiente (sem segredos reais)
 docker compose up -d   # PostgreSQL de desenvolvimento
 ```
 
