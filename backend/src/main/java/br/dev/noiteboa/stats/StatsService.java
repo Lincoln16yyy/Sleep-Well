@@ -28,10 +28,13 @@ public class StatsService {
 
     private final SleepLogRepository sleepLogRepository;
     private final UserRepository userRepository;
+    private final br.dev.noiteboa.goal.SleepGoalRepository sleepGoalRepository;
 
-    public StatsService(SleepLogRepository sleepLogRepository, UserRepository userRepository) {
+    public StatsService(SleepLogRepository sleepLogRepository, UserRepository userRepository,
+                        br.dev.noiteboa.goal.SleepGoalRepository sleepGoalRepository) {
         this.sleepLogRepository = sleepLogRepository;
         this.userRepository = userRepository;
+        this.sleepGoalRepository = sleepGoalRepository;
     }
 
     public Summary summary(String email, int days) {
@@ -78,12 +81,15 @@ public class StatsService {
             consistency = Math.sqrt(variance);
         }
 
+        int targetMinutesForDebt = sleepGoalRepository.findById(user.getId())
+            .map(br.dev.noiteboa.goal.SleepGoal::getTargetMinutes)
+            .orElse(TARGET_MINUTES);
         long debtMinutes = 0;
         LocalDate today = LocalDate.now(zone);
         for (int i = 0; i < 7; i++) {
             LocalDate d = today.minusDays(i);
             long slept = minutesSleptByDate.getOrDefault(d, 0L);
-            debtMinutes += Math.max(0, TARGET_MINUTES - slept);
+            debtMinutes += Math.max(0, targetMinutesForDebt - slept);
         }
 
         List<DayStats> daily = new ArrayList<>();

@@ -35,7 +35,7 @@ class FlywayMigrationTest {
             .load();
         flyway.migrate();
 
-        assertEquals("2", flyway.info().current().getVersion().toString());
+        assertEquals("3", flyway.info().current().getVersion().toString());
 
         try (Connection c = DriverManager.getConnection(
                 "jdbc:postgresql://localhost:5432/sono?user=sono&password=sono_dev_only", "sono", "sono_dev_only");
