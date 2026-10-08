@@ -16,4 +16,14 @@ public class GlobalExceptionHandler {
                 "Já existe uma conta com este e-mail.");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(detail);
     }
+
+    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
+    public ResponseEntity<ProblemDetail> handleValidation(org.springframework.web.bind.MethodArgumentNotValidException ex) {
+        java.util.List<String> errors = ex.getBindingResult().getFieldErrors().stream()
+            .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+            .distinct()
+            .toList();
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, String.join("; ", errors));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(detail);
+    }
 }
