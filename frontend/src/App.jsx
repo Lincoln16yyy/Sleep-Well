@@ -7,6 +7,7 @@ import Registrar from './pages/Registrar';
 import Historico from './pages/Historico';
 import Dashboard from './pages/Dashboard';
 import Configuracoes from './pages/Configuracoes';
+import ProtectedRoute from './auth/ProtectedRoute';
 
 export default function App() {
   return (
@@ -16,10 +17,12 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
-          <Route path="/registrar" element={<Registrar />} />
-          <Route path="/historico" element={<Historico />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/configuracoes" element={<Configuracoes />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/registrar" element={<Registrar />} />
+            <Route path="/historico" element={<Historico />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/configuracoes" element={<Configuracoes />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>
