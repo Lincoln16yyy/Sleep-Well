@@ -13,10 +13,13 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final br.dev.noiteboa.auth.jwt.JwtService jwtService;
 
-    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder) {
+    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder,
+                       br.dev.noiteboa.auth.jwt.JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     public RegisterResponse register(RegisterRequest request) {
@@ -32,5 +35,13 @@ public class AuthService {
             throw new DuplicateEmailException();
         }
         return new RegisterResponse(user.getId(), user.getEmail(), user.getDisplayName());
+    }
+
+    public br.dev.noiteboa.auth.dto.LoginResponse login(br.dev.noiteboa.auth.dto.LoginRequest request) {
+        var user = userRepository.findByEmailIgnoreCase(request.getEmail())
+            .filter(u -> passwordEncoder.matches(request.getPassword(), u.getPasswordHash()))
+            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Credenciais inválidas"));
+        String token = jwtService.generateToken(user.getEmail());
+        return new br.dev.noiteboa.auth.dto.LoginResponse(token, jwtService.getExpirationSeconds());
     }
 }
