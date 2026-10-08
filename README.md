@@ -52,12 +52,25 @@ scripts/    Scripts de setup do repositório
 
 ## Rodando localmente
 
-> Será preenchido na issue "Validar ambiente local" e atualizado conforme o back-end e o front-end forem criados.
+### Banco de dados (PostgreSQL 16 via Docker)
 
 ```bash
 cp .env.example .env   # variáveis de ambiente (sem segredos reais)
-docker compose up -d   # PostgreSQL de desenvolvimento
+docker compose up -d   # sobe o PostgreSQL
 ```
+
+**Conexão local:** `localhost:5432` · usuário `sono` · banco `sono` · senha `sono_dev_only` (somente desenvolvimento).
+
+```bash
+docker compose ps      # ver status
+docker compose logs db # ver logs
+docker compose down    # derrubar
+docker compose down -v # derrubar e apagar os dados (reset)
+```
+
+### Back-end e front-end
+
+> Será preenchido conforme o back-end (issue #6) e o front-end (issue #18) forem criados.
 
 ## Licença
 MIT. Veja [`LICENSE`](LICENSE).
