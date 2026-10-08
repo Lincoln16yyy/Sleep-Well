@@ -26,6 +26,14 @@ describe('api client', () => {
     expect(localStorage.getItem('token')).toBeNull();
   });
 
+  it('shows the API message on 401 when there is no session (failed login)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ detail: 'Credenciais inválidas' }), { status: 401 }),
+    );
+    await expect(api.post('/auth/login', {})).rejects.toThrow('Credenciais inválidas');
+    expect(localStorage.getItem('token')).toBeNull();
+  });
+
   it('converts ProblemDetail into friendly message', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ detail: 'Já existe uma conta com este e-mail.' }), { status: 409 }),

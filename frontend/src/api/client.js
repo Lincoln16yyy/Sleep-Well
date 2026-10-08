@@ -8,6 +8,17 @@ export function clearSession() {
   localStorage.removeItem('token');
 }
 
+async function readProblemMessage(response) {
+  try {
+    const problem = await response.json();
+    if (problem.detail) return problem.detail;
+    if (problem.title) return problem.title;
+  } catch {
+    // corpo não é ProblemDetail: mantém mensagem genérica
+  }
+  return '';
+}
+
 async function request(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   const token = getToken();
@@ -17,22 +28,19 @@ async function request(path, options = {}) {
 
   const response = await fetch(`${BASE_URL}${path}`, { ...options, headers });
 
-  if (response.status === 401) {
-    clearSession();
-    window.location.href = '/login';
-    throw new Error('Sessão expirada. Faça login novamente.');
-  }
-
   if (!response.ok) {
-    let message = `Erro ${response.status}`;
-    try {
-      const problem = await response.json();
-      if (problem.detail) message = problem.detail;
-      else if (problem.title) message = problem.title;
-    } catch {
-      // mantém mensagem genérica
+    const message = await readProblemMessage(response);
+
+    // 401 com sessão ativa = token expirado/inválido: limpa e volta pro login.
+    // 401 sem sessão = falha de autenticação (ex.: senha errada): só mostra o erro.
+    const hadSession = Boolean(getToken());
+    if (response.status === 401 && hadSession) {
+      clearSession();
+      window.location.href = '/login';
+      throw new Error('Sessão expirada. Faça login novamente.');
     }
-    throw new Error(message);
+
+    throw new Error(message || `Erro ${response.status}`);
   }
 
   if (response.status === 204) return null;
