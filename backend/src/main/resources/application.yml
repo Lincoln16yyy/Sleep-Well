@@ -7,6 +7,9 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  mvc:
+    problem-details:
+      enabled: true
   flyway:
     enabled: true
     locations: classpath:db/migration
