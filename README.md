@@ -68,9 +68,19 @@ docker compose down    # derrubar
 docker compose down -v # derrubar e apagar os dados (reset)
 ```
 
-### Back-end e front-end
+### Back-end
 
-> Será preenchido conforme o back-end (issue #6) e o front-end (issue #18) forem criados.
+```bash
+cd backend
+mvn spring-boot:run   # sobe a API em http://localhost:8080 (precisa do Postgres rodando)
+mvn -B verify          # compila e roda os testes
+```
+
+Health check: `GET http://localhost:8080/actuator/health`
+
+### Front-end
+
+> Será preenchido quando o front-end for inicializado (issue #18).
 
 ## Licença
 MIT. Veja [`LICENSE`](LICENSE).
