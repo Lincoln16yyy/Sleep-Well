@@ -34,4 +34,13 @@ public class JwtService {
     public long getExpirationSeconds() {
         return expirationSeconds;
     }
+
+    public String parseEmail(String token) {
+        return Jwts.parser()
+            .verifyWith(key)
+            .build()
+            .parseSignedClaims(token)
+            .getPayload()
+            .getSubject();
+    }
 }
