@@ -57,4 +57,29 @@ class AuthRegisterTest {
         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))
             .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void invalidEmailReturns400() throws Exception {
+        String body = "{\"displayName\":\"Lincoln\",\"email\":\"nao-e-email\",\"password\":\"segredo123\"}";
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void emptyNameReturns400() throws Exception {
+        String body = "{\"displayName\":\"\",\"email\":\"semnome@example.com\",\"password\":\"segredo123\"}";
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void storedPasswordIsBCryptNotPlaintext() throws Exception {
+        String body = "{\"displayName\":\"Lincoln\",\"email\":\"hash@example.com\",\"password\":\"segredo123\"}";
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isCreated());
+        var user = userRepository.findAll().stream()
+            .filter(u -> u.getEmail().equals("hash@example.com")).findFirst().orElseThrow();
+        org.junit.jupiter.api.Assertions.assertTrue(user.getPasswordHash().startsWith("$2"));
+        org.junit.jupiter.api.Assertions.assertNotEquals("segredo123", user.getPasswordHash());
+    }
 }

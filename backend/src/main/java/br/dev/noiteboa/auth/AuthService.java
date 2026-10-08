@@ -25,7 +25,12 @@ public class AuthService {
         }
         String hash = passwordEncoder.encode(request.getPassword());
         User user = new User(UUID.randomUUID(), request.getEmail(), hash, request.getDisplayName(), OffsetDateTime.now());
-        userRepository.save(user);
+        try {
+            userRepository.save(user);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // índice único case-insensitive do banco bloqueia corrida de e-mails simultâneos
+            throw new DuplicateEmailException();
+        }
         return new RegisterResponse(user.getId(), user.getEmail(), user.getDisplayName());
     }
 }
