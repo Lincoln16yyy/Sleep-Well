@@ -11,6 +11,8 @@ import java.util.UUID;
 
 public interface SleepLogRepository extends JpaRepository<SleepLog, UUID> {
 
+    java.util.List<SleepLog> findByUserIdOrderBySleepStartDesc(UUID userId);
+
     @Query("SELECT s FROM SleepLog s WHERE s.user.id = :userId " +
            "AND s.sleepStart >= COALESCE(:from, s.sleepStart) " +
            "AND s.sleepStart <= COALESCE(:to, s.sleepStart) " +
