@@ -44,4 +44,32 @@ public class SleepService {
         return sleepLogRepository.search(user.getId(), from, to, pageable)
             .map(s -> new SleepLogResponse(s.getId(), s.getSleepStart(), s.getSleepEnd(), s.getQuality(), s.getNotes()));
     }
+
+    public SleepLogResponse update(String email, java.util.UUID id, br.dev.noiteboa.sleep.dto.CreateSleepLogRequest request) {
+        br.dev.noiteboa.auth.User user = userRepository.findByEmailIgnoreCase(email)
+            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED));
+        var log = sleepLogRepository.findById(id).orElse(null);
+        if (log == null || !log.getUser().getId().equals(user.getId())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);
+        }
+        if (request.getSleepEnd().isBefore(request.getSleepStart()) || request.getSleepEnd().isEqual(request.getSleepStart())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Fim deve ser após o início");
+        }
+        if (java.time.Duration.between(request.getSleepStart(), request.getSleepEnd()).toHours() > 24) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Duração máxima é 24h");
+        }
+        log.update(request.getSleepStart(), request.getSleepEnd(), request.getQuality(), request.getNotes());
+        sleepLogRepository.save(log);
+        return new SleepLogResponse(log.getId(), log.getSleepStart(), log.getSleepEnd(), log.getQuality(), log.getNotes());
+    }
+
+    public void delete(String email, java.util.UUID id) {
+        br.dev.noiteboa.auth.User user = userRepository.findByEmailIgnoreCase(email)
+            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED));
+        var log = sleepLogRepository.findById(id).orElse(null);
+        if (log == null || !log.getUser().getId().equals(user.getId())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);
+        }
+        sleepLogRepository.delete(log);
+    }
 }

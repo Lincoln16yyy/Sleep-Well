@@ -63,4 +63,12 @@ public class SleepLog {
     public String getNotes() { return notes; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
+
+    public void update(OffsetDateTime sleepStart, OffsetDateTime sleepEnd, Short quality, String notes) {
+        this.sleepStart = sleepStart;
+        this.sleepEnd = sleepEnd;
+        this.quality = quality;
+        this.notes = notes;
+        this.updatedAt = OffsetDateTime.now();
+    }
 }

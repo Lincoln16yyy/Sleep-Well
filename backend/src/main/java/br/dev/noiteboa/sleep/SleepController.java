@@ -38,4 +38,17 @@ public class SleepController {
         var result = sleepService.list(email, from, to, page, cappedSize);
         return ResponseEntity.ok(result);
     }
+
+    @org.springframework.web.bind.annotation.PutMapping("/api/sleep-logs/{id}")
+    public ResponseEntity<SleepLogResponse> update(Authentication authentication, @org.springframework.web.bind.annotation.PathVariable java.util.UUID id, @Valid @RequestBody CreateSleepLogRequest request) {
+        String email = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(sleepService.update(email, id, request));
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/api/sleep-logs/{id}")
+    public ResponseEntity<Void> delete(Authentication authentication, @org.springframework.web.bind.annotation.PathVariable java.util.UUID id) {
+        String email = (String) authentication.getPrincipal();
+        sleepService.delete(email, id);
+        return ResponseEntity.noContent().build();
+    }
 }
