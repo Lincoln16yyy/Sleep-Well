@@ -35,7 +35,7 @@ class FlywayMigrationTest {
             .load();
         flyway.migrate();
 
-        assertEquals("1", flyway.info().current().getVersion().toString());
+        assertEquals("2", flyway.info().current().getVersion().toString());
 
         try (Connection c = DriverManager.getConnection(
                 "jdbc:postgresql://localhost:5432/sono?user=sono&password=sono_dev_only", "sono", "sono_dev_only");
@@ -48,6 +48,23 @@ class FlywayMigrationTest {
             } catch (SQLException expected) {
                 // OK: e-mail duplicado ignorando caso deve falhar
             }
+
+            s.execute("INSERT INTO sleep_logs (user_id, sleep_start, sleep_end, quality) " +
+                      "SELECT id, '2026-10-01 22:00:00+00', '2026-10-02 06:00:00+00', 4 FROM users LIMIT 1");
+
+            assertInsertFails(s, "INSERT INTO sleep_logs (user_id, sleep_start, sleep_end, quality) " +
+                "SELECT id, '2026-10-02 06:00:00+00', '2026-10-01 22:00:00+00', 4 FROM users LIMIT 1");
+            assertInsertFails(s, "INSERT INTO sleep_logs (user_id, sleep_start, sleep_end, quality) " +
+                "SELECT id, '2026-10-01 22:00:00+00', '2026-10-02 06:00:00+00', 7 FROM users LIMIT 1");
+        }
+    }
+
+    private void assertInsertFails(Statement s, String sql) throws SQLException {
+        try {
+            s.execute(sql);
+            throw new AssertionError("esperava violação de constraint");
+        } catch (SQLException expected) {
+            // OK
         }
     }
 }
