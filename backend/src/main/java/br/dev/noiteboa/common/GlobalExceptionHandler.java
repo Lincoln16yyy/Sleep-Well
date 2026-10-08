@@ -26,4 +26,21 @@ public class GlobalExceptionHandler {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, String.join("; ", errors));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(detail);
     }
+
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ProblemDetail> handleResponseStatus(org.springframework.web.server.ResponseStatusException ex) {
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        if (status == null) {
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(status,
+                ex.getReason() != null ? ex.getReason() : ex.getMessage());
+        return ResponseEntity.status(status).body(detail);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ProblemDetail> handleUnexpected(Exception ex) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(detail);
+    }
 }
