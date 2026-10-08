@@ -23,4 +23,9 @@ public class AuthController {
         RegisterResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @PostMapping("/api/auth/login")
+    public ResponseEntity<br.dev.noiteboa.auth.dto.LoginResponse> login(@Valid @RequestBody br.dev.noiteboa.auth.dto.LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
 }
