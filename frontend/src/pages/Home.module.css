@@ -1,0 +1,205 @@
+/* Landing page (issue #26) — paleta, raios e sombras vêm dos tokens da marca */
+
+/* O Layout aplica padding de 1rem no <main>; compensamos para o hero e o
+   rodapé ocuparem a largura total. */
+.page {
+  margin: -1rem -1rem -1rem;
+}
+
+/* ---------- Hero (proposta) ---------- */
+.hero {
+  background:
+    radial-gradient(900px 380px at 15% -15%, rgba(63, 60, 187, 0.55), transparent 65%),
+    var(--color-noite);
+  text-align: center;
+  padding: clamp(48px, 9vw, 96px) var(--space-6);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.mark {
+  width: 56px;
+  height: 56px;
+}
+
+.name {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  color: var(--color-luar);
+  letter-spacing: 0.5px;
+}
+
+.tagline {
+  margin: var(--space-6) 0 0;
+  font-size: clamp(2rem, 6vw, 2.75rem);
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--color-luar);
+}
+
+.lead {
+  max-width: 42rem;
+  margin: var(--space-4) auto 0;
+  font-size: var(--fs-lg);
+  color: var(--color-lavanda);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+
+/* ---------- Botões ---------- */
+.btnPrimary,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-md);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.btnPrimary {
+  background: var(--color-ambar);
+  color: var(--color-noite);
+}
+
+.btnPrimary:hover {
+  filter: brightness(1.06);
+}
+
+.btnGhost {
+  border: 2px solid var(--color-lavanda);
+  color: var(--color-lavanda);
+}
+
+.btnGhost:hover {
+  background: rgba(185, 182, 255, 0.14);
+}
+
+/* ---------- Seção "Como funciona" ---------- */
+.section {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-6);
+}
+
+.sectionTitle {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  color: var(--color-noite);
+}
+
+.sectionLead {
+  margin: var(--space-3) auto 0;
+  max-width: 40rem;
+  text-align: center;
+  color: var(--color-indigo);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  background: var(--color-indigo);
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--color-noite);
+}
+
+.cardText {
+  margin: 0;
+  color: var(--color-noite);
+}
+
+/* ---------- Chamada final para cadastro ---------- */
+.cta {
+  background: var(--color-noite);
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+}
+
+.ctaTitle {
+  margin: 0;
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  color: var(--color-luar);
+}
+
+.ctaText {
+  margin: var(--space-3) 0 0;
+  color: var(--color-lavanda);
+}
+
+.cta .actions {
+  margin-top: var(--space-6);
+}
+
+/* ---------- Rodapé ---------- */
+.footer {
+  background: var(--color-noite);
+  border-top: 1px solid rgba(185, 182, 255, 0.25);
+  padding: var(--space-6);
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--color-lavanda);
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    padding: var(--space-8) var(--space-4);
+  }
+
+  .btnPrimary,
+  .btnGhost {
+    width: 100%;
+    max-width: 320px;
+  }
+}
