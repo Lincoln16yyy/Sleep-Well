@@ -2,64 +2,37 @@
 
 App web para **registrar o sono, entender o padrão e criar consistência de horários**. Projeto autoral de Lincoln, inspirado na ideia do projeto integrador "Meu Soninho" (IFPI Picos), com código, nome e identidade próprios.
 
-- Plano completo: [`PLANO.md`](PLANO.md)
+- Plano completo (escopo, arquitetura, modelo de dados, API): [`PLANO.md`](PLANO.md)
 - Como agentes de IA devem trabalhar: [`AGENTS.md`](AGENTS.md)
-- Decisões técnicas: [`docs/`](docs/)
+- Como contribuir (issues, branches, PRs): [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- Decisões técnicas (ADRs) e identidade: [`docs/`](docs/)
 
 **Stack:** Java 21 + Spring Boot 3 + PostgreSQL (back-end) · React + Vite (front-end) · GitHub Actions (CI).
 
-## Começando (passo a passo do kit)
+## Pré-requisitos
 
-1. **Crie o repositório** no GitHub (vazio) e envie este kit:
-   ```bash
-   git init && git add . && git commit -m "chore: kit inicial do projeto"
-   git branch -M main
-   git remote add origin git@github.com:SEU-USUARIO/NOME-DO-REPO.git
-   git push -u origin main
-   ```
-2. **Crie labels, milestones e as 38 issues** (precisa do [GitHub CLI](https://cli.github.com)):
-   ```bash
-   gh auth login
-   scripts/seed-github.sh --dry-run   # confira o que será criado
-   scripts/seed-github.sh             # cria de verdade
-   ```
-3. **Faça as issues `agente:humano` do M0**: nome/identidade e proteção da `main`.
-4. **(Opcional) Ative o `@claude`** nas issues e PRs:
-   - Instale o GitHub App do Claude no repositório e crie o segredo `ANTHROPIC_API_KEY` (a forma mais fácil é rodar `/install-github-app` dentro do Claude Code).
-   - Comente `@claude implemente esta issue seguindo o AGENTS.md` em uma issue `agente:ok`.
-   - Isso consome créditos da API e minutos do GitHub Actions; acompanhe os custos.
-5. **Crie um quadro (GitHub Projects)**, opcional: aba *Projects* > *New project* > Board, e adicione as issues. Colunas sugeridas: Backlog, Pronto para fazer, Em andamento, Em revisão, Feito.
-6. **Trabalhe em ordem**: M0 → M1 → M2 ... Só avance quando o critério "Pronto quando" do milestone (PLANO.md, seção 7) for cumprido.
+| Ferramenta | Versão usada | Como conferir |
+|---|---|---|
+| Docker + Docker Compose | 24+ | `docker --version` |
+| JDK | 21 | `java --version` |
+| Maven | 3.9+ | `mvn --version` |
+| Node.js | 24 | `node --version` |
+| npm | 11+ (acompanha o Node) | `npm --version` |
+| Git | 2.x | `git --version` |
+| GitHub CLI (`gh`) | opcional (issues e PRs) | `gh --version` |
 
-## O que cada label significa
+Sem Docker também funciona: use um PostgreSQL 16 em `localhost:5432` e aponte as variáveis de ambiente abaixo para ele.
 
-| Label | Uso |
-|---|---|
-| `agente:ok` | Agente de IA pode executar sozinho |
-| `agente:revisar` | Agente pode fazer, mas você revisa com atenção (segurança/dados) |
-| `agente:humano` | Só você (configurações, segredos, decisões) |
-| `tipo:*`, `area:*`, `prio:*` | Organização |
-| `mvp` / `pos-mvp` | Fase |
+## Rodando localmente (do zero)
 
-## Estrutura
-
-```
-backend/    Java 21 + Spring Boot 3 (API REST)        -> issue #6
-frontend/   React + Vite (PWA)                        -> issue #21
-docs/       ADRs, identidade visual e documentação
-scripts/    Scripts de setup do repositório
-```
-
-## Rodando localmente
-
-### Banco de dados (PostgreSQL 16 via Docker)
+### 1. Banco de dados (PostgreSQL 16 via Docker)
 
 ```bash
-cp .env.example .env   # variáveis de ambiente (sem segredos reais)
+cp .env.example .env   # referência das variáveis (sem segredos reais)
 docker compose up -d   # sobe o PostgreSQL
 ```
 
-**Conexão local:** `localhost:5432` · usuário `sono` · banco `sono` · senha `sono_dev_only` (somente desenvolvimento).
+O `docker-compose.yml` já traz os valores de desenvolvimento: **`localhost:5432`** · usuário `sono` · banco `sono` · senha `sono_dev_only`.
 
 ```bash
 docker compose ps      # ver status
@@ -68,23 +41,33 @@ docker compose down    # derrubar
 docker compose down -v # derrubar e apagar os dados (reset)
 ```
 
-### Back-end
+### 2. Back-end (http://localhost:8080)
 
 ```bash
 cd backend
-mvn spring-boot:run   # sobe a API em http://localhost:8080 (precisa do Postgres rodando)
-mvn -B verify          # compila e roda os testes
+mvn spring-boot:run                              # API em http://localhost:8080
+SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run   # idem, com o Swagger habilitado
 ```
 
-Health check: `GET http://localhost:8080/actuator/health`
+```bash
+mvn -B verify    # compila e roda todos os testes (também é o que a CI faz)
+```
 
-### Front-end
+Conferindo que subiu:
+
+```bash
+curl http://localhost:8080/actuator/health   # {"status":"UP"}
+```
+
+### 3. Front-end (http://localhost:5173)
 
 ```bash
 cd frontend
 npm ci            # instala as dependências (uma vez)
 npm run dev       # sobe em http://localhost:5173 (precisa da API em :8080)
 ```
+
+Abra http://localhost:5173, crie uma conta e registre uma noite.
 
 Verificações e build:
 
@@ -94,11 +77,70 @@ npm test          # testes (vitest)
 npm run build     # build de produção em frontend/dist
 ```
 
-A URL da API entra no build pela variável `VITE_API_URL` (padrão `http://localhost:8080/api`).
+### O que a CI roda
+
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) executa, em cada PR: `mvn -B verify` (com PostgreSQL 16 como serviço) e `npm ci && npm run lint && npm test && npm run build`. **Só faça o merge com tudo verde.**
+
+## API
+
+**Base:** `http://localhost:8080/api`
+
+| Método | Rota | Descrição | Auth |
+|---|---|---|---|
+| POST | `/auth/register` | Cria a conta (201) | — |
+| POST | `/auth/login` | Devolve o token JWT (200) | — |
+| GET | `/me` | Perfil e fuso horário | Bearer |
+| PUT | `/me` | Atualiza o fuso horário | Bearer |
+| DELETE | `/me` | Exclui a conta e todos os dados | Bearer |
+| POST | `/sleep-logs` | Registra uma noite (201) | Bearer |
+| GET | `/sleep-logs` | Lista: filtros `from`/`to`, paginação `page`/`size` (máx. 100), ordem do mais recente | Bearer |
+| PUT | `/sleep-logs/{id}` | Edita uma noite | Bearer |
+| DELETE | `/sleep-logs/{id}` | Exclui uma noite | Bearer |
+| GET | `/goal` | Meta de sono (cria a padrão se não existir) | Bearer |
+| PUT | `/goal` | Atualiza a meta (240–720 min + horários) | Bearer |
+| GET | `/stats/summary?days=7\|30` | Média, constância, dívida de sono e série diária | Bearer |
+
+- **Autenticação:** header `Authorization: Bearer <token>`. O front-end guarda o token no `localStorage` e o envia automaticamente; sem token (ou com ele expirado), as rotas protegidas respondem **401**.
+- **Erros:** no formato `ProblemDetail` (RFC 9457), com `status`, `title` e `detail` — ex.: `{"status":409,"detail":"E-mail já cadastrado"}`.
+- **Cada usuário vê só os próprios dados**: todas as rotas de dados filtram pelo usuário autenticado.
+
+### Swagger / OpenAPI
+
+O Swagger fica desligado por padrão e é habilitado pelo profile `dev`:
+
+```bash
+cd backend
+SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run
+```
+
+- **Swagger UI:** http://localhost:8080/swagger-ui.html
+- **Documento OpenAPI (JSON):** http://localhost:8080/v3/api-docs
+
+> Os endpoints de exemplo do Swagger usam o servidor local; para testar, primeiro faça `POST /api/auth/login` e copie o token no botão **Authorize**.
+
+## Variáveis de ambiente
+
+### Back-end
+
+| Variável | Padrão (dev) | Observação |
+|---|---|---|
+| `DB_HOST` / `DB_PORT` | `localhost` / `5432` | Host e porta do PostgreSQL |
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | `sono` / `sono` / `sono_dev_only` | Credenciais; **troque em produção** |
+| `JWT_SECRET` | valor só de dev | **Obrigatório em produção** (assina os tokens) |
+| `JWT_EXPIRATION_SECONDS` | `3600` | Validade do token em segundos |
+| `SPRING_PROFILES_ACTIVE` | — | `dev` habilita o Swagger |
+
+Os padrões estão em `backend/src/main/resources/application.yml` e a referência versionada está no [`.env.example`](.env.example).
+
+### Front-end
+
+| Variável | Padrão | Observação |
+|---|---|---|
+| `VITE_API_URL` | `http://localhost:8080/api` | Usada **no momento do build** (o Vite embute o valor no JavaScript) |
 
 ## Build de imagens (Docker)
 
-Os Dockerfiles são multi-stage: dependências/buld em uma etapa e imagem final enxuta em outra.
+Os Dockerfiles são multi-stage: dependências/build em uma etapa e imagem final enxuta em outra.
 
 ```bash
 # back-end: Maven (JDK 21) -> JRE 21
@@ -130,17 +172,59 @@ Rodar o front-end:
 docker run --rm -p 8081:80 noiteboa-frontend   # http://localhost:8081
 ```
 
-### Variáveis de ambiente do back-end
+## Estrutura
 
-| Variável | Padrão (dev) | Observação |
-|---|---|---|
-| `DB_HOST` / `DB_PORT` | `localhost` / `5432` | Host e porta do PostgreSQL |
-| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | `sono` / `sono` / `sono_dev_only` | Credenciais; **troque em produção** |
-| `JWT_SECRET` | valor só de dev | **Obrigatório em produção** (assina os tokens) |
-| `JWT_EXPIRATION_SECONDS` | `3600` | Validade do token |
-| `SPRING_PROFILES_ACTIVE` | — | `dev` habilita o Swagger |
+```
+backend/    Java 21 + Spring Boot 3 (API REST)        -> issue #6
+frontend/   React + Vite (PWA)                        -> issue #21
+docs/       ADRs, identidade visual e documentação
+scripts/    Scripts de setup do repositório
+```
 
-Front-end: `VITE_API_URL` é usada **no momento do build** (o Vite embute o valor no JavaScript).
+## Como contribuir
+
+O fluxo completo — issues por label, nome de branch, estilo de commit, verificações e regras de PR — está em [`CONTRIBUTING.md`](CONTRIBUTING.md). Resumo em um comando:
+
+```bash
+git checkout main && git pull && git checkout -b feat/34-slug-da-issue
+```
+
+Regras de ouro: **uma issue por vez**, `Closes #NUMERO` no PR, CI verde antes do merge e quem revisa faz o merge.
+
+## O que cada label significa
+
+| Label | Uso |
+|---|---|
+| `agente:ok` | Agente de IA pode executar sozinho |
+| `agente:revisar` | Agente pode fazer, mas você revisa com atenção (segurança/dados) |
+| `agente:humano` | Só você (configurações, segredos, decisões) |
+| `tipo:*`, `area:*`, `prio:*` | Organização |
+| `mvp` / `pos-mvp` | Fase |
+
+## Setup inicial do repositório (feito na criação do projeto)
+
+Registro histórico de como o repositório foi preparado; útil para recriar em outro projeto.
+
+1. **Crie o repositório** no GitHub (vazio) e envie este kit:
+   ```bash
+   git init && git add . && git commit -m "chore: kit inicial do projeto"
+   git branch -M main
+   git remote add origin git@github.com:SEU-USUARIO/NOME-DO-REPO.git
+   git push -u origin main
+   ```
+2. **Crie labels, milestones e as issues** (precisa do [GitHub CLI](https://cli.github.com)):
+   ```bash
+   gh auth login
+   scripts/seed-github.sh --dry-run   # confira o que será criado
+   scripts/seed-github.sh             # cria de verdade
+   ```
+3. **Faça as issues `agente:humano` do M0**: nome/identidade e proteção da `main`.
+4. **(Opcional) Ative o `@claude`** nas issues e PRs:
+   - Instale o GitHub App do Claude no repositório e crie o segredo `ANTHROPIC_API_KEY` (a forma mais fácil é rodar `/install-github-app` dentro do Claude Code).
+   - Comente `@claude implemente esta issue seguindo o AGENTS.md` em uma issue `agente:ok`.
+   - Isso consome créditos da API e minutos do GitHub Actions; acompanhe os custos.
+5. **Crie um quadro (GitHub Projects)**, opcional: aba *Projects* > *New project* > Board, e adicione as issues. Colunas sugeridas: Backlog, Pronto para fazer, Em andamento, Em revisão, Feito.
+6. **Trabalhe em ordem**: M0 → M1 → M2 ... Só avance quando o critério "Pronto quando" do milestone (PLANO.md, seção 7) for cumprido.
 
 ## Licença
 MIT. Veja [`LICENSE`](LICENSE).
