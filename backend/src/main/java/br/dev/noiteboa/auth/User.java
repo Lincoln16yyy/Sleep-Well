@@ -62,6 +62,10 @@ public class User {
         return timezone;
     }
 
+    public void updateTimezone(String timezone) {
+        this.timezone = timezone;
+    }
+
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
