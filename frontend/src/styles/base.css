@@ -1,0 +1,25 @@
+/* Estilos base globais — tokens em tokens.css (docs/assets/brand/tokens.css) */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: var(--font-sans);
+  background: var(--color-nevoa);
+  color: var(--color-noite);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Foco visível para teclado (a11y) */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--color-indigo);
+  outline-offset: 2px;
+}
