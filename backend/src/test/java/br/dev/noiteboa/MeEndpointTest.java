@@ -2,6 +2,7 @@ package br.dev.noiteboa;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -65,5 +66,33 @@ class MeEndpointTest {
         String tampered = token.substring(0, token.length() - 2) + "xx";
         mockMvc.perform(get("/api/me").header("Authorization", "Bearer " + tampered))
             .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void updateTimezonePersists() throws Exception {
+        String token = loginToken("me3@example.com");
+        mockMvc.perform(put("/api/me").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"timezone\":\"Europe/Lisbon\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.timezone").value("Europe/Lisbon"));
+        mockMvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.timezone").value("Europe/Lisbon"));
+    }
+
+    @Test
+    void invalidTimezoneReturns400() throws Exception {
+        String token = loginToken("me4@example.com");
+        mockMvc.perform(put("/api/me").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"timezone\":\"Marte/Cratera\"}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void blankTimezoneReturns400() throws Exception {
+        String token = loginToken("me5@example.com");
+        mockMvc.perform(put("/api/me").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"timezone\":\"\"}"))
+            .andExpect(status().isBadRequest());
     }
 }

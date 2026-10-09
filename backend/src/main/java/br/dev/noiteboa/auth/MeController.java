@@ -31,5 +31,22 @@ public class MeController {
         return ResponseEntity.noContent().build();
     }
 
+    @org.springframework.web.bind.annotation.PutMapping("/api/me")
+    public ResponseEntity<?> update(Authentication authentication,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody br.dev.noiteboa.auth.dto.UpdateMeRequest request) {
+        String email = (String) authentication.getPrincipal();
+        var user = userRepository.findByEmailIgnoreCase(email)
+            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED));
+        try {
+            java.time.ZoneId.of(request.getTimezone());
+        } catch (java.time.DateTimeException e) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "Fuso horário inválido");
+        }
+        user.updateTimezone(request.getTimezone());
+        userRepository.save(user);
+        return ResponseEntity.ok(new MeResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getTimezone()));
+    }
+
     record MeResponse(java.util.UUID id, String email, String displayName, String timezone) {}
 }
