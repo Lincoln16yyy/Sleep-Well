@@ -52,8 +52,10 @@
 | Erro sobre Névoa | 3,57:1 | Só texto grande ou com ícone |
 | Sucesso sobre Névoa | 2,12:1 | **Não**; usar só com ícone ou fundo |
 | Âmbar sobre Névoa | 1,62:1 | **Não**; nunca texto ou ícone fino em fundo claro |
+| `--color-erro-texto` `#C1272D` sobre Névoa / branco | 5,33:1 / 5,84:1 | Sim — **usar este para texto de erro** |
+| `--color-sucesso-texto` `#16745A` sobre Névoa / branco | 5,71:1 / 5,20:1 | Sim — **usar este para texto de sucesso** |
 
-Regra prática: no fundo claro o texto é Noite ou Índigo. Âmbar em fundo claro só como preenchimento de botão (com texto Noite).
+Regra prática: no fundo claro o texto é Noite ou Índigo. Âmbar em fundo claro só como preenchimento de botão (com texto Noite). Mensagens de erro/sucesso em texto usam as variantes `*-texto` acima (adicionadas na issue #35; `#E5484D` e `#2FBF9B` continuam para bordas, ícones e preenchimentos) — medições em [`docs/qualidade.md`](qualidade.md).
 
 ## Tipografia
 **Nunito** (Google Fonts, licença SIL OFL, gratuita, inclusive para uso comercial). A licença está em `assets/brand/Nunito-OFL.txt`.

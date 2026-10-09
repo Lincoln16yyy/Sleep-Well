@@ -156,12 +156,12 @@ export default function Configuracoes() {
       </form>
 
       {error && (
-        <p role="alert" style={{ color: '#E5484D' }}>
+        <p role="alert" style={{ color: 'var(--color-erro-texto)' }}>
           {error}
         </p>
       )}
       {success && (
-        <p role="status" style={{ color: '#2FBF9B' }}>
+        <p role="status" style={{ color: 'var(--color-sucesso-texto)' }}>
           {success}
         </p>
       )}

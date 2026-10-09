@@ -31,7 +31,7 @@ export default function SleepChart({ summary, days, goalHours }) {
             y={goalHours}
             stroke="#E5484D"
             strokeDasharray="5 4"
-            label={{ value: `Meta ${goalHours}h`, position: 'insideTopRight', fontSize: 11, fill: '#E5484D' }}
+            label={{ value: `Meta ${goalHours}h`, position: 'insideTopRight', fontSize: 11, fill: 'var(--color-erro-texto)' }}
           />
           <Bar dataKey="hours" fill="#15142E" radius={[4, 4, 0, 0]} />
         </BarChart>

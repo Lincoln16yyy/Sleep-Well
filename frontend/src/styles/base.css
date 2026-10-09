@@ -23,3 +23,16 @@ select:focus-visible {
   outline: 3px solid var(--color-indigo);
   outline-offset: 2px;
 }
+
+/* Em fundo escuro o índigo fica fraco: usa Luar (15:1 sobre Noite) */
+header a:focus-visible {
+  outline-color: var(--color-luar);
+}
+
+/* Links do menu: alvo de toque mínimo de 44px (WCAG 2.5.8) */
+header nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-1);
+}
