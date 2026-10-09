@@ -5,7 +5,8 @@
 
 const pad = (n) => String(n).padStart(2, '0');
 
-function toLocalInput(date) {
+/** Converte Date (ou ISO vindo da API) para o formato dos inputs datetime-local. */
+export function toLocalInput(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
