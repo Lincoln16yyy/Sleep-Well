@@ -87,7 +87,7 @@ export default function Dashboard() {
 
       {status === 'error' && (
         <div role="alert" style={{ ...cardStyle, borderColor: '#E5484D' }}>
-          <p style={{ marginTop: 0, color: '#E5484D' }}>Não foi possível carregar as estatísticas: {errorMessage}</p>
+          <p style={{ marginTop: 0, color: 'var(--color-erro-texto)' }}>Não foi possível carregar as estatísticas: {errorMessage}</p>
           <button type="button" style={toggleButtonStyle(false)} onClick={() => load(days)}>
             Tentar novamente
           </button>

@@ -132,7 +132,7 @@ export default function Historico() {
       <h1>Histórico</h1>
 
       {error && (
-        <p role="alert" style={{ color: '#E5484D' }}>
+        <p role="alert" style={{ color: 'var(--color-erro-texto)' }}>
           {error}
         </p>
       )}
@@ -178,7 +178,7 @@ export default function Historico() {
                           disabled={deleting}
                           style={{
                             ...smallButtonStyle,
-                            background: '#E5484D',
+                            background: 'var(--color-erro-texto)',
                             color: '#FFFFFF',
                             border: 'none',
                           }}
@@ -257,7 +257,7 @@ export default function Historico() {
                     />
                   </label>
                   {editError && (
-                    <p role="alert" style={{ color: '#E5484D', margin: 0 }}>
+                    <p role="alert" style={{ color: 'var(--color-erro-texto)', margin: 0 }}>
                       {editError}
                     </p>
                   )}

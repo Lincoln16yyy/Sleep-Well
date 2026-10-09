@@ -187,6 +187,13 @@
   color: var(--color-lavanda);
 }
 
+/* Botões e links com foco de teclado em fundo escuro: contorno em Luar */
+.hero a:focus-visible,
+.cta a:focus-visible,
+.footer a:focus-visible {
+  outline-color: var(--color-luar);
+}
+
 /* ---------- Responsivo ---------- */
 @media (max-width: 760px) {
   .grid {
