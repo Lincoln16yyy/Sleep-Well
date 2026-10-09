@@ -63,8 +63,36 @@ O Lighthouse não tem fluxo de login. Para pontuar `/registrar`, `/historico`, `
 
 O axe-core dispensa esse passo: basta injetar `axe.min.js` na página **depois** de gravar o token no `localStorage` (o script roda antes do carregamento) e chamar `axe.run(document)`.
 
+## PWA instalável (issue #37)
+
+> O **Lighthouse 12+ removeu a categoria PWA** (o "Lighthouse PWA aprovado" da issue não é mais
+> mensurável com a ferramenta). A verificação equivalente é a de **instalabilidade do Chrome**
+> (mesmos critérios que a auditoria cobria), feita via DevTools Protocol em 09/10/2026:
+>
+> | Verificação | Resultado |
+> |---|---|
+> | Manifesto encontrado e parseado sem erro (`Page.getAppManifest`) | ✅ |
+> | `name`, `short_name`, `display: standalone`, `start_url`, `scope`, `theme_color #15142E` | ✅ |
+> | Ícones 192 / 512 / 512 maskable | ✅ |
+> | **`Page.getInstallabilityErrors`** (prompt de instalação) | ✅ **0 erros** |
+> | Service worker registrado, `activated` e controlando a página | ✅ |
+> | **Offline**: servidor derrubado, recarrega o shell e navega no SPA pelo menu | ✅ |
+>
+> Reproduzir: `cd frontend && npm run build && npx vite preview --port 4173`, abra no Chrome e
+> inspecione *Application → Manifest / Service Workers*; para o offline, derrube o preview e
+> recarregue. Observações:
+>
+> - O service worker só registra no **build de produção** (`import.meta.env.PROD`), então não
+>   interfere no hot reload do desenvolvimento.
+> - **HTTPS é obrigatório em produção** (o Chrome só permite SW/instalação em contexto seguro;
+>   `localhost` isento) — a issue #33 (deploy) precisa servir HTTPS.
+> - A instalação no **Android** precisa de um aparelho real e fica para o dono da issue
+>   (o critério "instalável no celular" depende do Chrome do dispositivo).
+> - O cache guarda apenas arquivos públicos do shell (JS/CSS/ícones); **nenhum dado de sono ou
+>   token vai para o cache** — chamadas de API são sempre rede.
+
 ## Fora do escopo desta issue
 
-- **Performance, SEO e PWA**: categorias do Lighthouse não auditadas aqui (falta `manifest.json` e service worker — issue #37).
+- **Performance e SEO**: categorias do Lighthouse não auditadas nesta issue (a de PWA sumiu do Lighthouse 12+; a instalabilidade está registrada na seção acima).
 - **Auditoria automática no CI**: as rodadas acima são manuais. Para travar no CI seria preciso adicionar `axe-core` (+ Playwright) como dependência de teste — dependência nova, precisa de justificativa em PR próprio.
 - **Contraste no modo escuro**: a identidade prevê um modo escuro futuro; as medições deste documento são sobre o fundo claro (`Névoa`) atual.
