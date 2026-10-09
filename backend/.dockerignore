@@ -1,0 +1,6 @@
+target/
+*.class
+*.log
+.git/
+.idea/
+.vscode/
