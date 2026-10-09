@@ -44,8 +44,8 @@ App web para **registrar o sono, entender o padrão e criar consistência de hor
 ## Estrutura
 
 ```
-backend/    Java 21 + Spring Boot 3 (API REST)        -> criado na issue #6
-frontend/   React + Vite (PWA)                        -> criado na issue #18
+backend/    Java 21 + Spring Boot 3 (API REST)        -> issue #6
+frontend/   React + Vite (PWA)                        -> issue #21
 docs/       ADRs, identidade visual e documentação
 scripts/    Scripts de setup do repositório
 ```
@@ -80,7 +80,67 @@ Health check: `GET http://localhost:8080/actuator/health`
 
 ### Front-end
 
-> Será preenchido quando o front-end for inicializado (issue #18).
+```bash
+cd frontend
+npm ci            # instala as dependências (uma vez)
+npm run dev       # sobe em http://localhost:5173 (precisa da API em :8080)
+```
+
+Verificações e build:
+
+```bash
+npm run lint      # lint (oxlint)
+npm test          # testes (vitest)
+npm run build     # build de produção em frontend/dist
+```
+
+A URL da API entra no build pela variável `VITE_API_URL` (padrão `http://localhost:8080/api`).
+
+## Build de imagens (Docker)
+
+Os Dockerfiles são multi-stage: dependências/buld em uma etapa e imagem final enxuta em outra.
+
+```bash
+# back-end: Maven (JDK 21) -> JRE 21
+docker build -t noiteboa-backend ./backend
+
+# front-end: Node 24 -> Nginx (serve o SPA)
+docker build -t noiteboa-frontend ./frontend
+
+# a URL da API é embutida no build do front-end:
+docker build -t noiteboa-frontend \
+  --build-arg VITE_API_URL=https://api.seudominio.com/api ./frontend
+```
+
+Rodar o back-end com variáveis de ambiente (exemplo apontando para o Postgres do `docker compose`):
+
+```bash
+docker run --rm -p 8080:8080 \
+  --add-host host.docker.internal:host-gateway \
+  -e DB_HOST=host.docker.internal -e DB_PORT=5432 \
+  -e POSTGRES_DB=sono -e POSTGRES_USER=sono -e POSTGRES_PASSWORD=sono_dev_only \
+  -e JWT_SECRET=troque-este-valor-em-producao \
+  -e JWT_EXPIRATION_SECONDS=3600 \
+  noiteboa-backend
+```
+
+Rodar o front-end:
+
+```bash
+docker run --rm -p 8081:80 noiteboa-frontend   # http://localhost:8081
+```
+
+### Variáveis de ambiente do back-end
+
+| Variável | Padrão (dev) | Observação |
+|---|---|---|
+| `DB_HOST` / `DB_PORT` | `localhost` / `5432` | Host e porta do PostgreSQL |
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | `sono` / `sono` / `sono_dev_only` | Credenciais; **troque em produção** |
+| `JWT_SECRET` | valor só de dev | **Obrigatório em produção** (assina os tokens) |
+| `JWT_EXPIRATION_SECONDS` | `3600` | Validade do token |
+| `SPRING_PROFILES_ACTIVE` | — | `dev` habilita o Swagger |
+
+Front-end: `VITE_API_URL` é usada **no momento do build** (o Vite embute o valor no JavaScript).
 
 ## Licença
 MIT. Veja [`LICENSE`](LICENSE).
