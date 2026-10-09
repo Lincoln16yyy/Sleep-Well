@@ -1,8 +1,208 @@
+import { useCallback, useEffect, useState } from 'react';
+import { api } from '../api/client';
+import {
+  formatDuration,
+  formatLocal,
+  smartDefaults,
+  toApiPayload,
+  validateSleepForm,
+} from '../lib/sleep';
+
+const QUALITY_LABELS = ['1 Péssima', '2 Ruim', '3 Ok', '4 Boa', '5 Ótima'];
+
+const fieldStyle = {
+  width: '100%',
+  minHeight: '48px',
+  fontSize: '16px',
+  padding: '0.6rem 0.75rem',
+  border: '1px solid #C9C6F0',
+  borderRadius: '10px',
+  background: '#FFFFFF',
+  boxSizing: 'border-box',
+};
+
 export default function Registrar() {
+  const [sleepStart, setSleepStart] = useState('');
+  const [sleepEnd, setSleepEnd] = useState('');
+  const [quality, setQuality] = useState(0);
+  const [notes, setNotes] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [recent, setRecent] = useState([]);
+  const [recentLoaded, setRecentLoaded] = useState(false);
+
+  const applyDefaults = useCallback(() => {
+    const defaults = smartDefaults();
+    setSleepStart(defaults.sleepStart);
+    setSleepEnd(defaults.sleepEnd);
+  }, []);
+
+  const loadRecent = useCallback(async () => {
+    try {
+      const page = await api.get('/sleep-logs?page=0&size=5');
+      setRecent(page.content ?? []);
+    } catch {
+      setRecent([]);
+    } finally {
+      setRecentLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    applyDefaults();
+    loadRecent();
+  }, [applyDefaults, loadRecent]);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    const form = { sleepStart, sleepEnd, quality, notes };
+    const problem = validateSleepForm(form);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+
+    try {
+      const created = await api.post('/sleep-logs', toApiPayload(form));
+      setSuccess(`Noite registrada: ${formatDuration(created.sleepStart, created.sleepEnd)} de sono.`);
+      applyDefaults();
+      setQuality(0);
+      setNotes('');
+      await loadRecent();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
-    <div>
-      <h1>Registrar</h1>
-      <p>Placeholder da tela.</p>
+    <div style={{ maxWidth: '480px' }}>
+      <h1>Registrar noite</h1>
+      <p style={{ color: '#4B4A6B' }}>
+        Preencha quando você dormiu e acordou. Já deixamos os horários padrão: ontem à noite e hoje de manhã.
+      </p>
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          Dormiu às
+          <input
+            type="datetime-local"
+            style={fieldStyle}
+            value={sleepStart}
+            onChange={(e) => setSleepStart(e.target.value)}
+            required
+          />
+        </label>
+
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          Acordou às
+          <input
+            type="datetime-local"
+            style={fieldStyle}
+            value={sleepEnd}
+            onChange={(e) => setSleepEnd(e.target.value)}
+            required
+          />
+        </label>
+
+        <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend style={{ marginBottom: '0.35rem', fontWeight: 700 }}>Como foi a noite?</legend>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {QUALITY_LABELS.map((label, index) => {
+              const value = index + 1;
+              const selected = quality === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={selected}
+                  title={label}
+                  onClick={() => setQuality(value)}
+                  style={{
+                    flex: 1,
+                    minHeight: '56px',
+                    fontSize: '16px',
+                    borderRadius: '10px',
+                    border: selected ? '2px solid #15142E' : '1px solid #C9C6F0',
+                    background: selected ? '#FFE9B5' : '#FFFFFF',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {value}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          Observação (opcional)
+          <textarea
+            rows={3}
+            maxLength={2000}
+            placeholder="Ex.: acordei várias vezes"
+            style={{ ...fieldStyle, minHeight: '80px', resize: 'vertical' }}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </label>
+
+        <button
+          type="submit"
+          style={{
+            minHeight: '52px',
+            fontSize: '17px',
+            fontWeight: 700,
+            border: 'none',
+            borderRadius: '10px',
+            background: '#15142E',
+            color: '#FFE9B5',
+            cursor: 'pointer',
+          }}
+        >
+          Salvar registro
+        </button>
+      </form>
+
+      {error && (
+        <p role="alert" style={{ color: '#E5484D' }}>
+          {error}
+        </p>
+      )}
+      {success && (
+        <p role="status" style={{ color: '#2FBF9B' }}>
+          {success}
+        </p>
+      )}
+
+      <section aria-label="Seus últimos registros" style={{ marginTop: '1.5rem' }}>
+        <h2 style={{ fontSize: '18px' }}>Seus últimos registros</h2>
+        {!recentLoaded && <p>Carregando…</p>}
+        {recentLoaded && recent.length === 0 && (
+          <p style={{ color: '#4B4A6B' }}>Nenhuma noite registrada ainda.</p>
+        )}
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {recent.map((log) => (
+            <li
+              key={log.id}
+              style={{
+                background: '#FFFFFF',
+                border: '1px solid #C9C6F0',
+                borderRadius: '10px',
+                padding: '0.6rem 0.75rem',
+              }}
+            >
+              <strong>
+                {formatLocal(log.sleepStart)} → {formatLocal(log.sleepEnd)}
+              </strong>{' '}
+              · {formatDuration(log.sleepStart, log.sleepEnd)} · nota {log.quality}
+              {log.notes && <div style={{ color: '#4B4A6B' }}>{log.notes}</div>}
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
