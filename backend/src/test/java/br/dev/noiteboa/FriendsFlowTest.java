@@ -250,4 +250,35 @@ class FriendsFlowTest {
         mockMvc.perform(delete("/api/friends/" + friendshipId).header("Authorization", "Bearer " + ana))
             .andExpect(status().isNotFound());
     }
+
+    @Test
+    void deletingAccountCascadesFriendships() throws Exception {
+        String ana = loginToken("ana-del@example.com", "Ana");
+        String bruno = loginToken("bruno-del@example.com", "Bruno");
+        invite(ana, "bruno-del@example.com");
+        String receivedId = requestId(bruno, "received", "ana-del@example.com");
+        mockMvc.perform(post("/api/friends/requests/" + receivedId + "/accept")
+                .header("Authorization", "Bearer " + bruno))
+            .andExpect(status().isOk());
+        mockMvc.perform(get("/api/friends").header("Authorization", "Bearer " + bruno))
+            .andExpect(jsonPath("$.length()").value(1));
+
+        // V4 declara ON DELETE CASCADE: apagar a conta não pode falhar por FK
+        // nem deixar amizade órfã apontando para usuário inexistente
+        mockMvc.perform(delete("/api/me").header("Authorization", "Bearer " + ana))
+            .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/friends").header("Authorization", "Bearer " + bruno))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(0));
+
+        // e o convite pendente da pessoa excluída também some
+        String ana2 = loginToken("ana-del2@example.com", "Ana2");
+        String davi = loginToken("davi-del@example.com", "Davi");
+        invite(ana2, "davi-del@example.com");
+        mockMvc.perform(delete("/api/me").header("Authorization", "Bearer " + ana2))
+            .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/friends/requests").header("Authorization", "Bearer " + davi))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.received.length()").value(0));
+    }
 }
