@@ -22,7 +22,7 @@
 
 **Regras de uso**
 - Área livre ao redor do logo: no mínimo a altura da letra "N".
-- Tamanho mínimo: ícone 24 px; logo horizontal 96 px de largura.
+- Tamanho mínimo: ícone 24 px; logo horizontal 160 px de largura (o wordmark "Noite Boa" é mais largo que a marca sozinha — abaixo disso a letra fica ilegível).
 - Não esticar, girar, trocar as cores nem aplicar sombras no logo.
 - Fundo claro usa a versão `light`; fundo escuro usa `dark`. Não colocar o logo sobre fotos sem uma camada escura por trás.
 
