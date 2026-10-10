@@ -1,0 +1,9 @@
+# Perfil de produção (Render). Ativado com SPRING_PROFILES_ACTIVE=prod.
+#
+# Sem esta declaração, o @Value("${JWT_SECRET:dev-only-...}") de JwtService
+# cairia silenciosamente no default de desenvolvimento. Aqui a propriedade
+# passa a existir e só pode vir de variável de ambiente (no render.yaml está
+# marcada como sync: false, ou seja, digitada no dashboard, nunca no Git).
+# Se a variável estiver ausente, a subida da aplicação falha — não existe
+# JWT de produção assinado com segredo de desenvolvimento.
+JWT_SECRET: ${JWT_SECRET}

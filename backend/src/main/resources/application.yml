@@ -1,8 +1,15 @@
+# A Render injeta $PORT (10000); localmente segue 8080
+server:
+  port: ${PORT:8080}
+
 spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRES_DB:sono}
     username: ${POSTGRES_USER:sono}
     password: ${POSTGRES_PASSWORD:sono_dev_only}
+    hikari:
+      # Pool contido: Render free tem 512 MB e o Neon free limita conexões diretas
+      maximum-pool-size: ${DB_POOL_SIZE:5}
   jpa:
     hibernate:
       ddl-auto: validate
