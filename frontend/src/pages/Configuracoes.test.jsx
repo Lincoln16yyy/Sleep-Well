@@ -1,7 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
-import { cancelarLembrete } from '../lib/reminder';
+import { agendarLembrete, cancelarLembrete } from '../lib/reminder';
+
+// agenda/cancela espiados: o agendamento em si é testado em src/lib/reminder.test.js
+vi.mock('../lib/reminder', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, agendarLembrete: vi.fn(() => true), cancelarLembrete: vi.fn() };
+});
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), { status });
@@ -26,6 +32,8 @@ describe('tela de Configurações', () => {
     NotificationFake.permission = 'granted';
     NotificationFake.requestPermission = vi.fn().mockResolvedValue('granted');
     window.Notification = NotificationFake;
+    agendarLembrete.mockClear();
+    cancelarLembrete.mockClear();
     fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
       const path = String(url);
       if (path.includes('/api/goal') && options.method === 'PUT') {
@@ -72,6 +80,7 @@ describe('tela de Configurações', () => {
     const put = calls('PUT', '/api/goal')[0];
     expect(JSON.parse(put[1].body)).toEqual({ targetMinutes: 540, bedtime: '23:00', wakeTime: '07:00' });
     expect(calls('PUT', '/api/me')).toHaveLength(0); // fuso não mudou
+    expect(agendarLembrete).not.toHaveBeenCalled(); // lembrete desligado: nada a reagendar
   });
 
   it('salva o fuso alterado', async () => {
@@ -122,6 +131,7 @@ describe('tela de Configurações', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent('Lembrete armado para 23:00');
     expect(NotificationFake.requestPermission).toHaveBeenCalledTimes(1);
+    expect(agendarLembrete).toHaveBeenCalledWith('23:00');
     expect(localStorage.getItem('noiteboa.lembrete')).toBe('1');
     expect(screen.getByRole('checkbox')).toBeChecked();
   });
@@ -162,5 +172,28 @@ describe('tela de Configurações', () => {
 
     expect(await screen.findByText(/Defina o .Horário de dormir./)).toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('reagenda o lembrete quando o horário de dormir muda', async () => {
+    localStorage.setItem('noiteboa.lembrete', '1');
+    openScreen();
+
+    fireEvent.change(await screen.findByLabelText('Horário de dormir'), { target: { value: '23:45' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Preferências salvas.');
+    await waitFor(() => expect(agendarLembrete).toHaveBeenCalledWith('23:45'));
+  });
+
+  it('cancela o lembrete se o horário de dormir for removido', async () => {
+    localStorage.setItem('noiteboa.lembrete', '1');
+    openScreen();
+
+    fireEvent.change(await screen.findByLabelText('Horário de dormir'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Preferências salvas.');
+    await waitFor(() => expect(cancelarLembrete).toHaveBeenCalled());
+    expect(agendarLembrete).not.toHaveBeenCalled();
   });
 });

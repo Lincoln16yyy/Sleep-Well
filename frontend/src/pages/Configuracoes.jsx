@@ -101,6 +101,14 @@ export default function Configuracoes() {
       });
       setMe(updatedMe);
       setSuccess('Preferências salvas.');
+
+      // o lembrete segue o horário de dormir: reagenda com o valor salvo
+      // (e cancela se o horário foi removido — a preferência fica guardada
+      // e volta a valer quando houver um horário novo)
+      if (lembreteAtivo()) {
+        if (bedtime) agendarLembrete(bedtime);
+        else cancelarLembrete();
+      }
     } catch (err) {
       setError(err.message);
     } finally {

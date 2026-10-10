@@ -38,6 +38,7 @@ describe('lembrete de dormir', () => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     delete window.Notification;
+    delete window.navigator.serviceWorker;
   });
 
   it('guarda a preferência apenas neste dispositivo', () => {
@@ -58,18 +59,18 @@ describe('lembrete de dormir', () => {
     expect(msAte('banana', agora)).toBeNull();
   });
 
-  it('dispara no horário e rearma para o dia seguinte', () => {
+  it('dispara no horário e rearma para o dia seguinte', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 0, 5, 22, 59, 0));
 
     expect(agendarLembrete('23:00')).toBe(true);
-    vi.advanceTimersByTime(61 * 1000);
+    await vi.advanceTimersByTimeAsync(61 * 1000);
 
     expect(NotificationFake.chamadas).toHaveLength(1);
     expect(NotificationFake.chamadas[0].titulo).toContain('Noite Boa');
     expect(NotificationFake.chamadas[0].body).toContain('23:00');
 
-    vi.advanceTimersByTime(24 * 60 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000);
     expect(NotificationFake.chamadas).toHaveLength(2);
   });
 
@@ -77,6 +78,45 @@ describe('lembrete de dormir', () => {
     vi.useFakeTimers();
     expect(agendarLembrete('25h')).toBe(false);
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('usa o service worker quando o construtor de Notification lança (Chrome/Android)', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 5, 22, 59, 30));
+    class NotificationMovel {
+      static permission = 'granted';
+      constructor() {
+        throw new TypeError('não suportado fora de um service worker');
+      }
+    }
+    window.Notification = NotificationMovel;
+    const showNotification = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, 'serviceWorker', {
+      configurable: true,
+      value: { getRegistration: vi.fn().mockResolvedValue({ showNotification }) },
+    });
+
+    agendarLembrete('23:00');
+    await vi.advanceTimersByTimeAsync(61 * 1000);
+
+    expect(showNotification).toHaveBeenCalledTimes(1);
+    expect(showNotification.mock.calls[0][0]).toContain('Noite Boa');
+    expect(showNotification.mock.calls[0][1].body).toContain('23:00');
+  });
+
+  it('não quebra quando o construtor falha e não há service worker', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 5, 22, 59, 30));
+    window.Notification = class {
+      constructor() {
+        throw new Error('sem suporte');
+      }
+    };
+
+    agendarLembrete('23:00');
+    await vi.advanceTimersByTimeAsync(61 * 1000); // não deve lançar
+
+    expect(NotificationFake.chamadas).toHaveLength(0);
   });
 
   it('agenda na abertura do app quando a preferência está ativa', async () => {
@@ -90,7 +130,7 @@ describe('lembrete de dormir', () => {
     await expect(iniciarLembrete()).resolves.toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    vi.advanceTimersByTime(60 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
     expect(NotificationFake.chamadas).toHaveLength(1);
   });
 

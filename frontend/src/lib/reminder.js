@@ -38,18 +38,29 @@ export function msAte(hora, agora = new Date()) {
   return alvo.getTime() - agora.getTime();
 }
 
-function notificar(titulo, corpo) {
+async function notificar(titulo, corpo) {
   const opcoes = { body: corpo, icon: '/icon-192.png', badge: '/icon-192.png' };
+
+  // 1) Service worker já registrado: é o caminho suportado no Chrome/Android
+  //    (new Notification lança lá). getRegistration() não pendura quando não
+  //    há SW — diferente de serviceWorker.ready, que esperaria para sempre.
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration?.();
+    if (registration) {
+      await registration.showNotification(titulo, opcoes);
+      return;
+    }
+  } catch {
+    // sem SW utilizável: tenta o construtor clássico
+  }
+
+  // 2) Construtor clássico (desktop). Em navegadores móveis pode lançar —
+  //    aí é melhor esforço: sem notificação, sem quebrar o app.
   try {
     const notificacao = new window.Notification(titulo, opcoes);
-    void notificacao; // construir já dispara o aviso
+    void notificacao;
   } catch {
-    // Chrome em Android exige o service worker para notificar
-    navigator.serviceWorker?.ready
-      ?.then((registration) => registration.showNotification(titulo, opcoes))
-      .catch(() => {
-        /* melhor esforço: sem notificação, sem quebrar o app */
-      });
+    /* melhor esforço (PLANO.md §3) */
   }
 }
 
@@ -60,7 +71,7 @@ export function agendarLembrete(hora) {
   if (atraso === null) return false;
   timer = window.setTimeout(() => {
     timer = null;
-    notificar('Noite Boa — hora de dormir', `${hora}: seu horário de dormir. Durma melhor, no seu ritmo.`);
+    void notificar('Noite Boa — hora de dormir', `${hora}: seu horário de dormir. Durma melhor, no seu ritmo.`);
     agendarLembrete(hora);
   }, atraso);
   return true;
