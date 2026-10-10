@@ -48,12 +48,13 @@ jdbc:postgresql://ep-exemplo-abc123.aws.neon.tech/neondb?sslmode=require
 - **remova** `usuario:senha` da URL (eles vão em `SPRING_DATASOURCE_USERNAME`/`PASSWORD`);
 - mantenha `sslmode=require` (o Neon exige SSL).
 
-> **Se a Render falhar no boot** com
-> `PlaceholderResolutionException: Circular placeholder reference 'JWT_SECRET'`:
-> é a proteção do perfil `prod` funcionando — a variável `JWT_SECRET` não foi
-> definida (ou está vazia). Defina-a no dashboard e faça redeploy. **Não** remova
-> a linha `JWT_SECRET: ${JWT_SECRET}` do `application-prod.yml` para "consertar":
-> isso liberaria o segredo de desenvolvimento em produção.
+> **Se a Render falhar no boot** com `IllegalStateException: JWT_SECRET não
+> configurada (perfil prod)...` (o log mostra `Application run failed` com essa
+> causa): a variável `JWT_SECRET` não foi definida, está vazia ou é igual ao
+> valor de desenvolvimento. Defina-a no dashboard e faça redeploy. A proteção
+> vive no `JwtService` e é ligada por `JWT_SECRET_REQUIRED: true` no
+> `application-prod.yml` — **não** remova essa linha para "consertar": liberaria
+> o segredo de desenvolvimento em produção.
 
 ## Passo 3 — Apontar o front-end para a API (Vercel)
 
