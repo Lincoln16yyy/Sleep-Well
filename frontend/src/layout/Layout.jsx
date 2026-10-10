@@ -11,6 +11,7 @@ export default function Layout() {
           <Link to="/registrar" style={{ color: '#B9B6FF' }}>Registrar</Link>
           <Link to="/historico" style={{ color: '#B9B6FF' }}>Histórico</Link>
           <Link to="/dashboard" style={{ color: '#B9B6FF' }}>Dashboard</Link>
+          <Link to="/amigos" style={{ color: '#B9B6FF' }}>Amigos</Link>
           <Link to="/configuracoes" style={{ color: '#B9B6FF' }}>Config</Link>
         </nav>
       </header>

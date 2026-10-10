@@ -1,0 +1,191 @@
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import App from '../App';
+
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), { status });
+}
+
+const ME = {
+  id: 'u1',
+  email: 'ana@exemplo.com',
+  displayName: 'Ana',
+  timezone: 'America/Sao_Paulo',
+  shareWithFriends: false,
+};
+
+const AMIGOS = [
+  // Bruno compartilha; Carla não — a lista só diz isso, sem métrica nenhuma
+  { id: 'f1', displayName: 'Bruno', email: 'bruno@exemplo.com', sharesData: true },
+  { id: 'f2', displayName: 'Carla', email: 'carla@exemplo.com', sharesData: false },
+];
+
+const CONVITES = {
+  sent: [{ id: 's1', friend: { id: 'u9', displayName: 'Elisa', email: 'elisa@exemplo.com' }, createdAt: '2026-10-10T01:00:00Z' }],
+  received: [{ id: 'r1', friend: { id: 'u8', displayName: 'Davi', email: 'davi@exemplo.com' }, createdAt: '2026-10-10T01:00:00Z' }],
+};
+
+const RANKING_7 = {
+  days: 7,
+  ranking: [
+    { userId: 'u2', displayName: 'Bruno', isMe: false, consistencyPercent: 86, nights: 6 },
+    { userId: 'u1', displayName: 'Ana', isMe: true, consistencyPercent: 43, nights: 3 },
+  ],
+};
+
+const RANKING_30 = {
+  days: 30,
+  ranking: [{ userId: 'u1', displayName: 'Ana', isMe: true, consistencyPercent: 70, nights: 21 }],
+};
+
+describe('tela de Amigos', () => {
+  let fetchMock;
+
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('token', 'jwt-123');
+    vi.restoreAllMocks();
+    fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
+      const path = String(url);
+      const method = options.method ?? 'GET';
+      if (path.includes('/api/me') && method === 'PUT') {
+        return jsonResponse({ ...ME, ...JSON.parse(options.body) });
+      }
+      if (path.includes('/api/me')) return jsonResponse(ME);
+      if (path.includes('/friends/requests') && method === 'POST') {
+        return jsonResponse({ id: 'n1', status: 'pending', friend: { id: 'u7', displayName: 'Fábio', email: 'fabio@exemplo.com' } });
+      }
+      if (path.includes('/friends/requests') && method === 'DELETE') return new Response(null, { status: 204 });
+      if (path.includes('/friends/requests')) return jsonResponse(CONVITES);
+      if (path.includes('/friends/ranking?days=30')) return jsonResponse(RANKING_30);
+      if (path.includes('/friends/ranking')) return jsonResponse(RANKING_7);
+      if (path.includes('/api/friends') && method === 'DELETE') return new Response(null, { status: 204 });
+      if (path.includes('/api/friends')) return jsonResponse(AMIGOS);
+      return jsonResponse({});
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function openScreen() {
+    window.history.pushState({}, '', '/amigos');
+    render(<App />);
+  }
+
+  function calls(method, pathFragment) {
+    return fetchMock.mock.calls.filter(
+      ([url, options]) => (options?.method ?? 'GET') === method && String(url).includes(pathFragment),
+    );
+  }
+
+  it('lista amigos e avisa quem não compartilha, sem métrica', async () => {
+    openScreen();
+    const regiao = await screen.findByRole('region', { name: 'Meus amigos' });
+    expect(within(regiao).getByText('Bruno')).toBeInTheDocument();
+    expect(within(regiao).getByText('Carla')).toBeInTheDocument();
+    expect(within(regiao).getByText('não compartilha dados')).toBeInTheDocument();
+    // dentro da lista de amigos não há métrica nenhuma (privacidade)
+    expect(within(regiao).queryByText(/%/)).not.toBeInTheDocument();
+    expect(within(regiao).queryByText(/noite/)).not.toBeInTheDocument();
+  });
+
+  it('mostra convites recebidos e enviados', async () => {
+    openScreen();
+    expect(await screen.findByText('Davi')).toBeInTheDocument();
+    expect(screen.getByText('Elisa')).toBeInTheDocument();
+    expect(screen.getByText('aguardando resposta')).toBeInTheDocument();
+  });
+
+  it('ranking mostra posição, consistência, noites e marca o próprio usuário', async () => {
+    openScreen();
+    const regiao = await screen.findByRole('region', { name: 'Ranking de consistência' });
+    expect(within(regiao).getByText('1º')).toBeInTheDocument();
+    expect(within(regiao).getByText('86%')).toBeInTheDocument();
+    expect(within(regiao).getByText('6 noites')).toBeInTheDocument();
+    expect(within(regiao).getByText('Ana (você)')).toBeInTheDocument();
+  });
+
+  it('toggle de compartilhar salva o opt-in na conta', async () => {
+    openScreen();
+    fireEvent.click(await screen.findByLabelText('Compartilhar minha consistência com amigos'));
+
+    await waitFor(() => expect(calls('PUT', '/api/me').length).toBe(1));
+    expect(JSON.parse(calls('PUT', '/api/me')[0][1].body)).toEqual({ shareWithFriends: true });
+  });
+
+  it('envia convite pelo e-mail digitado e confirma', async () => {
+    openScreen();
+    fireEvent.change(await screen.findByLabelText('E-mail do amigo'), { target: { value: 'fabio@exemplo.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar convite' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Convite enviado para Fábio');
+    expect(JSON.parse(calls('POST', '/friends/requests')[0][1].body)).toEqual({ email: 'fabio@exemplo.com' });
+  });
+
+  it('aceita convite recebido', async () => {
+    openScreen();
+    fireEvent.click((await screen.findAllByText('Aceitar'))[0]);
+
+    await waitFor(() => expect(calls('POST', '/friends/requests/r1/accept').length).toBe(1));
+  });
+
+  it('recusa convite recebido', async () => {
+    openScreen();
+    fireEvent.click((await screen.findAllByText('Recusar'))[0]);
+
+    await waitFor(() => expect(calls('POST', '/friends/requests/r1/decline').length).toBe(1));
+  });
+
+  it('cancela convite enviado', async () => {
+    openScreen();
+    fireEvent.click((await screen.findAllByText('Cancelar'))[0]);
+
+    await waitFor(() => expect(calls('DELETE', '/friends/requests/s1').length).toBe(1));
+  });
+
+  it('remove amizade', async () => {
+    openScreen();
+    fireEvent.click((await screen.findAllByText('Remover'))[0]);
+
+    await waitFor(() => expect(calls('DELETE', '/api/friends/f1').length).toBe(1));
+  });
+
+  it('troca o período do ranking para 30 dias', async () => {
+    openScreen();
+    fireEvent.click(await screen.findByRole('button', { name: '30 dias' }));
+
+    await waitFor(() => expect(screen.getByText('70%')).toBeInTheDocument());
+    expect(screen.getByText('21 noites')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '30 dias' })).toHaveAttribute('aria-pressed', 'true');
+    expect(calls('GET', 'days=30').length).toBe(1);
+  });
+
+  it('erro da API aparece como alerta sem quebrar a tela', async () => {
+    fetchMock.mockImplementation(async (url, options = {}) => {
+      const path = String(url);
+      const method = options.method ?? 'GET';
+      if (path.includes('/friends/requests') && method === 'POST') {
+        return jsonResponse({ detail: 'Não encontramos ninguém com este e-mail.' }, 404);
+      }
+      if (path.includes('/api/me')) return jsonResponse(ME);
+      if (path.includes('/friends/requests')) return jsonResponse({ sent: [], received: [] });
+      if (path.includes('/friends/ranking')) return jsonResponse({ days: 7, ranking: [] });
+      if (path.includes('/api/friends')) return jsonResponse([]);
+      return jsonResponse({});
+    });
+    openScreen();
+
+    fireEvent.change(await screen.findByLabelText('E-mail do amigo'), { target: { value: 'fantasma@exemplo.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar convite' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não encontramos ninguém com este e-mail.');
+  });
+
+  it('avisa que o convite não é amizade até o aceite', async () => {
+    openScreen();
+    expect(await screen.findByText('O convite só vira amizade quando a outra pessoa aceitar.')).toBeInTheDocument();
+    expect(screen.getByText(/Seus horários e registros nunca aparecem no ranking/)).toBeInTheDocument();
+  });
+});
