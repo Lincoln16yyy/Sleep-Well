@@ -126,6 +126,34 @@ class MeEndpointTest {
         mockMvc.perform(put("/api/me").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{}"))
             .andExpect(status().isBadRequest());
+        // campos presentes mas nulos contam como "nenhum dos dois informado"
+        mockMvc.perform(put("/api/me").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"timezone\":null,\"shareWithFriends\":null}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shareOnlyUpdatePreservesSavedTimezone() throws Exception {
+        String token = loginToken("share7@example.com");
+        // fuso diferente do padrão, para detectar sobrescrita acidental
+        mockMvc.perform(put("/api/me").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"timezone\":\"Europe/Lisbon\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.timezone").value("Europe/Lisbon"));
+
+        // atualiza só o compartilhamento: o fuso salvo deve permanecer
+        mockMvc.perform(put("/api/me").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"shareWithFriends\":true}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.timezone").value("Europe/Lisbon"))
+            .andExpect(jsonPath("$.shareWithFriends").value(true));
+
+        // e persiste no banco, não só na resposta
+        mockMvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.timezone").value("Europe/Lisbon"))
+            .andExpect(jsonPath("$.shareWithFriends").value(true));
     }
 
     @Test
