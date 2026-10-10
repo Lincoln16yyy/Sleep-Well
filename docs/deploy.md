@@ -96,6 +96,45 @@ Rode nesta ordem e **não pule nenhuma**:
    status 200 (sem erro de origem) e o header `access-control-allow-origin`
    correspondente a `CORS_ALLOWED_ORIGIN`.
 
+## Deploy contínuo (GitHub Actions → Render — issue #83)
+
+Fluxo automático a cada push em `main`:
+
+1. **CI** (`.github/workflows/ci.yml`) roda backend + frontend.
+2. Se o CI terminar **verde**, o workflow **Deploy** (`.github/workflows/deploy.yml`,
+   gatilho `workflow_run`) chama a API da Render com o `commitId` do push
+   (`POST /services/{id}/deploys`). O `render.yaml` usa `autoDeployTrigger: off`,
+   ou seja, **este workflow é o único que dispara deploy**.
+3. Ele espera o status **`live`** (até 25 min; `build_failed`/`canceled` → job vermelho).
+4. **Smoke test** de produção — qualquer item vermelho falha o job:
+   - `GET /actuator/health` → 200 e `"status":"UP"` (retenta até 5 min);
+   - preflight CORS com `Origin` do front → `access-control-allow-origin` exato;
+   - front `/`, `/cadastro`, `/login`, `/dashboard` → 200 (guarda do rewrite SPA);
+   - bundle `/assets/index-*.js` contém `noiteboa-api.onrender.com/api`
+     (guarda da `VITE_API_URL`).
+
+Também pode disparar manualmente: **Actions → Deploy (GitHub Actions → Render) → Run workflow**.
+
+### Segredo obrigatório
+
+| Segredo (GitHub Actions) | Onde criar o valor |
+|---|---|
+| `RENDER_API_KEY` | Render Dashboard → avatar → **Account Settings → API Keys** → *Create API key* (a chave é mostrada **uma única vez**; nomeie `gh-actions-deploy`) |
+
+Set pelo painel do GitHub (**Settings → Secrets and variables → Actions → New repository secret**)
+ou no terminal (o valor não vai para o histórico nem para o chat):
+
+```bash
+gh secret set RENDER_API_KEY   # cole a chave quando pedir e finalize com Ctrl+D
+```
+
+Sem o secret, o job falha no primeiro passo com a instrução no log. Nunca versione a chave (AGENTS.md).
+
+Por que não um smoke test no mesmo commit da CI: a Render com `checksPass` espera
+**todos** os checks do commit (docs oficiais: `render.com/docs/deploys`) — o smoke
+rodaria antes do deploy novo (validando a instância antiga) ou, se a produção
+estivesse fora, **bloquearia o próprio deploy** que consertaria o problema.
+
 ## Limites conhecidos do plano free
 
 - Render: serviço dorme após 15 min sem tráfego (cold start ~1 min);
@@ -111,4 +150,4 @@ Rode nesta ordem e **não pule nenhuma**:
 - [ ] `GET /actuator/health` respondendo `{"status":"UP"}` no endereço público.
 - [ ] Flyway com V1..V4 `success = true` no banco do Neon.
 - [ ] Fluxo completo (cadastro → login → registro de sono) funcionando no front publicado.
-- [ ] Workflow de deploy contínuo — issue separada (nova issue `agente:revisar`).
+- [x] Workflow de deploy contínuo — issue #83 (`deploy.yml` + seção "Deploy contínuo").

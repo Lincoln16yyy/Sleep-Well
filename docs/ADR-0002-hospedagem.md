@@ -70,8 +70,15 @@ foram consultados nas páginas oficiais em **09/10/2026** e servem para a decis�
   mover migração para `preDeployCommand`.
 - **`JWT_SECRET` obrigatória no perfil `prod`:** sem a variável, o startup falha
   (`application-prod.yml`) em vez de assinar tokens com o segredo de desenvolvimento.
-- **Workflow de deploy contínuo** (ex.: GitHub Actions → Render) é uma issue
-  separada, como manda a #33 — este PR só prepara o terreno.
+- **Workflow de deploy contínuo (issue #83):** `autoDeployTrigger: off` no
+  `render.yaml` — o workflow `deploy.yml` (GitHub Actions) dispara o deploy via
+  API da Render após o CI verde (gatilho `workflow_run`), espera o status `live`
+  e roda smoke test (health, CORS, rotas do SPA e bundle). Motivo da troca em
+  relação a `checksPass`: a Render espera **todos** os checks do commit
+  (docs oficiais: `render.com/docs/deploys`), então um smoke no mesmo commit
+  validaria a instância antiga ou — se a produção estivesse fora — bloquearia o
+  deploy que consertaria o problema. Segredo único: `RENDER_API_KEY`
+  (GitHub Secrets; passo a passo em `docs/deploy.md`).
 
 ## Referências consultadas (09/10/2026)
 
