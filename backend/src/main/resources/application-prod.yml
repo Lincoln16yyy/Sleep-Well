@@ -1,9 +1,11 @@
 # Perfil de produção (Render). Ativado com SPRING_PROFILES_ACTIVE=prod.
 #
-# Sem esta declaração, o @Value("${JWT_SECRET:dev-only-...}") de JwtService
-# cairia silenciosamente no default de desenvolvimento. Aqui a propriedade
-# passa a existir e só pode vir de variável de ambiente (no render.yaml está
-# marcada como sync: false, ou seja, digitada no dashboard, nunca no Git).
-# Se a variável estiver ausente, a subida da aplicação falha — não existe
-# JWT de produção assinado com segredo de desenvolvimento.
-JWT_SECRET: ${JWT_SECRET}
+# Ativa a exigência de JWT_SECRET no JwtService: se a variável de ambiente
+# JWT_SECRET estiver ausente, vazia ou for igual ao valor de desenvolvimento,
+# a aplicação falha na inicialização com mensagem clara e acionável.
+#
+# Antes esta linha era `JWT_SECRET: ${JWT_SECRET}` (auto-referência, pois a
+# chave yml tem o mesmo nome da variável), o que produzia o erro confuso
+# "Circular placeholder reference 'JWT_SECRET'". A validação agora vive no
+# código, e este arquivo apenas liga o requisito.
+JWT_SECRET_REQUIRED: true
