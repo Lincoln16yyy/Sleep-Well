@@ -19,7 +19,7 @@ public class MeController {
         String email = (String) authentication.getPrincipal();
         var user = userRepository.findByEmailIgnoreCase(email)
             .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED));
-        return ResponseEntity.ok(new MeResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getTimezone()));
+        return ResponseEntity.ok(new MeResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getTimezone(), user.isShareWithFriends()));
     }
 
     @org.springframework.web.bind.annotation.DeleteMapping("/api/me")
@@ -37,16 +37,25 @@ public class MeController {
         String email = (String) authentication.getPrincipal();
         var user = userRepository.findByEmailIgnoreCase(email)
             .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED));
-        try {
-            java.time.ZoneId.of(request.getTimezone());
-        } catch (java.time.DateTimeException e) {
+        if (request.getTimezone() == null && request.getShareWithFriends() == null) {
             throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.BAD_REQUEST, "Fuso horário inválido");
+                org.springframework.http.HttpStatus.BAD_REQUEST, "Informe o fuso horário ou o compartilhamento.");
         }
-        user.updateTimezone(request.getTimezone());
+        if (request.getTimezone() != null) {
+            try {
+                java.time.ZoneId.of(request.getTimezone());
+            } catch (java.time.DateTimeException e) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Fuso horário inválido");
+            }
+            user.updateTimezone(request.getTimezone());
+        }
+        if (request.getShareWithFriends() != null) {
+            user.setShareWithFriends(request.getShareWithFriends());
+        }
         userRepository.save(user);
-        return ResponseEntity.ok(new MeResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getTimezone()));
+        return ResponseEntity.ok(new MeResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getTimezone(), user.isShareWithFriends()));
     }
 
-    record MeResponse(java.util.UUID id, String email, String displayName, String timezone) {}
+    record MeResponse(java.util.UUID id, String email, String displayName, String timezone, boolean shareWithFriends) {}
 }

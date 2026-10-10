@@ -1,14 +1,20 @@
 package br.dev.noiteboa.auth.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Atualização de preferências da conta. Os dois campos são opcionais,
+ * mas ao menos um precisa estar presente (validado no controller):
+ * timezone é validado com ZoneId; shareWithFriends é o opt-in de
+ * compartilhamento da consistência com amigos (padrão desligado).
+ */
 public class UpdateMeRequest {
 
     /** Identificador IANA, ex.: America/Sao_Paulo (validado com ZoneId no controller). */
-    @NotBlank
     @Size(max = 64)
     private String timezone;
+
+    private Boolean shareWithFriends;
 
     public String getTimezone() {
         return timezone;
@@ -16,5 +22,13 @@ public class UpdateMeRequest {
 
     public void setTimezone(String timezone) {
         this.timezone = timezone;
+    }
+
+    public Boolean getShareWithFriends() {
+        return shareWithFriends;
+    }
+
+    public void setShareWithFriends(Boolean shareWithFriends) {
+        this.shareWithFriends = shareWithFriends;
     }
 }

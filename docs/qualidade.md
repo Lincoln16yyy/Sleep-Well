@@ -4,7 +4,7 @@ Registro das auditorias do app (issue #35). Última execução: **09/10/2026**.
 
 ## Resultado
 
-**As 7 telas principais pontuaram 100 em Acessibilidade e 100 em Boas práticas no Lighthouse, e zero violações no axe-core.**
+**As 8 telas principais pontuaram 100 em Acessibilidade e 100 em Boas práticas no Lighthouse, e zero violações no axe-core.**
 
 | Tela | Rota | Lighthouse Acessibilidade | Lighthouse Boas práticas | axe-core (WCAG 2.x A/AA) |
 |---|---|---|---|---|
@@ -14,6 +14,7 @@ Registro das auditorias do app (issue #35). Última execução: **09/10/2026**.
 | Registrar | `/registrar` | **100** | **100** | 0 |
 | Histórico | `/historico` | **100** | **100** | 0 |
 | Dashboard | `/dashboard` | **100** | **100** | 0 |
+| Amigos | `/amigos` | **100** | **100** | 0 |
 | Configurações | `/configuracoes` | **100** | **100** | 0 |
 
 - **Ferramentas:** Lighthouse **13.5.0** (categorias `accessibility` e `best-practices`) e axe-core **4.14.0** (tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`).
