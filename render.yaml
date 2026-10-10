@@ -1,0 +1,34 @@
+# Render Blueprint — back-end do Noite Boa (issue #33).
+# Infraestrutura como código: a Render sincroniza este arquivo ao conectar o repo.
+#
+# Segredos/valores de ambiente usam `sync: false`: são digitados no dashboard
+# da Render e NUNCA versionados aqui (AGENTS.md — sem credenciais no código).
+services:
+  - type: web
+    name: noiteboa-api
+    runtime: docker
+    branch: main
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free            # 512 MB / 0.1 CPU, sem cartão; ver docs/ADR-0002-hospedagem.md
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: checksPass   # só publica quando a CI do GitHub passar
+    envVars:
+      # Fixas (não são segredos)
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: JWT_EXPIRATION_SECONDS
+        value: "3600"
+      - key: DB_POOL_SIZE
+        value: "5"
+      # Segredos e valores por ambiente — preenchidos no dashboard
+      - key: JWT_SECRET
+        sync: false
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: CORS_ALLOWED_ORIGIN
+        sync: false
