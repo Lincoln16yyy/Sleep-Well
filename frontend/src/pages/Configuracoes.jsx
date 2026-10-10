@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, clearSession } from '../api/client';
+import {
+  agendarLembrete,
+  cancelarLembrete,
+  lembreteAtivo,
+  permissaoNotificacao,
+  setLembreteAtivo as salvarLembrete,
+  suportaNotificacao,
+} from '../lib/reminder';
 
 const TIMEZONES =
   typeof Intl.supportedValuesOf === 'function'
@@ -44,6 +52,8 @@ export default function Configuracoes() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [lembrete, setLembre] = useState(lembreteAtivo());
+  const [msgLembrete, setMsgLembrete] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -91,6 +101,14 @@ export default function Configuracoes() {
       });
       setMe(updatedMe);
       setSuccess('Preferências salvas.');
+
+      // o lembrete segue o horário de dormir: reagenda com o valor salvo
+      // (e cancela se o horário foi removido — a preferência fica guardada
+      // e volta a valer quando houver um horário novo)
+      if (lembreteAtivo()) {
+        if (bedtime) agendarLembrete(bedtime);
+        else cancelarLembrete();
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -101,6 +119,33 @@ export default function Configuracoes() {
   function handleLogout() {
     clearSession();
     navigate('/login');
+  }
+
+  /** Ativa/desativa o lembrete. A permissão só é pedida aqui, com clique explícito. */
+  async function alternarLembrete(e) {
+    const querAtivar = e.target.checked;
+    setMsgLembrete('');
+    if (!querAtivar) {
+      salvarLembrete(false);
+      cancelarLembrete();
+      setLembre(false);
+      return;
+    }
+    if (!suportaNotificacao()) {
+      setMsgLembrete('Este navegador não suporta notificações.');
+      return;
+    }
+    if (permissaoNotificacao() !== 'granted') {
+      const permissao = await window.Notification.requestPermission();
+      if (permissao !== 'granted') {
+        setMsgLembrete('Notificação bloqueada. Libere as notificações deste site nas permissões do navegador.');
+        return;
+      }
+    }
+    salvarLembrete(true);
+    agendarLembrete(bedtime);
+    setLembre(true);
+    setMsgLembrete(`Lembrete armado para ${bedtime}, enquanto o app estiver aberto.`);
   }
 
   if (loading) return <p>Carregando…</p>;
@@ -165,6 +210,56 @@ export default function Configuracoes() {
           {success}
         </p>
       )}
+
+      <section aria-label="Lembrete de dormir" style={{ marginTop: '1.5rem' }}>
+        <h2 style={{ fontSize: '18px' }}>Lembrete de dormir</h2>
+        <p style={{ color: '#4B4A6B', marginTop: 0, fontSize: '15px' }}>
+          Com o app aberto (aba no navegador ou instalado), avisamos você no seu horário de dormir.{' '}
+          <strong>Não é um alarme:</strong> navegadores não garantem notificação com o app fechado, e o suporte é
+          irregular no celular. A preferência fica guardada apenas neste dispositivo.
+        </p>
+
+        {permissaoNotificacao() === 'denied' && (
+          <p style={{ color: '#4B4A6B', fontSize: '15px' }}>
+            Notificações estão bloqueadas para este site — libere nas permissões do navegador para ativar o lembrete.
+          </p>
+        )}
+        {!suportaNotificacao() && (
+          <p style={{ color: '#4B4A6B', fontSize: '15px' }}>Este navegador não suporta notificações.</p>
+        )}
+
+        {bedtime ? (
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              minHeight: '44px',
+              fontSize: '16px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={lembrete}
+              onChange={alternarLembrete}
+              style={{ width: '24px', height: '24px', accentColor: '#15142E' }}
+            />
+            Avisar às {bedtime}
+          </label>
+        ) : (
+          <p style={{ color: '#4B4A6B', fontSize: '15px' }}>
+            Defina o “Horário de dormir” na meta para usar o lembrete.
+          </p>
+        )}
+
+        {msgLembrete && (
+          <p role="status" style={{ color: '#4B4A6B', fontSize: '15px' }}>
+            {msgLembrete}
+          </p>
+        )}
+      </section>
 
       <section aria-label="Conta" style={{ marginTop: '1.5rem' }}>
         <h2 style={{ fontSize: '18px' }}>Conta</h2>

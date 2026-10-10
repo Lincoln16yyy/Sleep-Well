@@ -1,9 +1,25 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
+import { agendarLembrete, cancelarLembrete } from '../lib/reminder';
+
+// agenda/cancela espiados: o agendamento em si é testado em src/lib/reminder.test.js
+vi.mock('../lib/reminder', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, agendarLembrete: vi.fn(() => true), cancelarLembrete: vi.fn() };
+});
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), { status });
+}
+
+class NotificationFake {
+  static permission = 'granted';
+  static requestPermission = vi.fn();
+
+  constructor() {
+    /* só precisa existir */
+  }
 }
 
 describe('tela de Configurações', () => {
@@ -13,6 +29,11 @@ describe('tela de Configurações', () => {
     localStorage.clear();
     localStorage.setItem('token', 'jwt-123');
     vi.restoreAllMocks();
+    NotificationFake.permission = 'granted';
+    NotificationFake.requestPermission = vi.fn().mockResolvedValue('granted');
+    window.Notification = NotificationFake;
+    agendarLembrete.mockClear();
+    cancelarLembrete.mockClear();
     fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, options = {}) => {
       const path = String(url);
       if (path.includes('/api/goal') && options.method === 'PUT') {
@@ -26,6 +47,11 @@ describe('tela de Configurações', () => {
       }
       return jsonResponse({ targetMinutes: 480, bedtime: '23:00:00', wakeTime: '07:00:00' });
     });
+  });
+
+  afterEach(() => {
+    cancelarLembrete();
+    delete window.Notification;
   });
 
   function openScreen() {
@@ -54,6 +80,7 @@ describe('tela de Configurações', () => {
     const put = calls('PUT', '/api/goal')[0];
     expect(JSON.parse(put[1].body)).toEqual({ targetMinutes: 540, bedtime: '23:00', wakeTime: '07:00' });
     expect(calls('PUT', '/api/me')).toHaveLength(0); // fuso não mudou
+    expect(agendarLembrete).not.toHaveBeenCalled(); // lembrete desligado: nada a reagendar
   });
 
   it('salva o fuso alterado', async () => {
@@ -83,5 +110,90 @@ describe('tela de Configurações', () => {
 
     await waitFor(() => expect(window.location.pathname).toBe('/login'));
     expect(localStorage.getItem('token')).toBeNull();
+  });
+
+  it('explica as limitações do lembrete na tela', async () => {
+    openScreen();
+    await screen.findByLabelText('Horas por noite (4 a 12)');
+
+    expect(screen.getByText(/não é um alarme/i)).toBeInTheDocument();
+    expect(screen.getByText(/apenas neste dispositivo/i)).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /Avisar às 23:00/ })).toBeInTheDocument();
+    // permissão nunca é pedida sozinha, sem clique
+    expect(NotificationFake.requestPermission).not.toHaveBeenCalled();
+  });
+
+  it('ativa o lembrete pedindo permissão só no clique', async () => {
+    NotificationFake.permission = 'default';
+    openScreen();
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Avisar às 23:00/ }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Lembrete armado para 23:00');
+    expect(NotificationFake.requestPermission).toHaveBeenCalledTimes(1);
+    expect(agendarLembrete).toHaveBeenCalledWith('23:00');
+    expect(localStorage.getItem('noiteboa.lembrete')).toBe('1');
+    expect(screen.getByRole('checkbox')).toBeChecked();
+  });
+
+  it('não ativa o lembrete quando a notificação é negada', async () => {
+    NotificationFake.permission = 'default';
+    NotificationFake.requestPermission.mockResolvedValue('denied');
+    openScreen();
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Avisar às 23:00/ }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/Notificação bloqueada/);
+    expect(localStorage.getItem('noiteboa.lembrete')).toBeNull();
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
+  });
+
+  it('desativa o lembrete ao desmarcar', async () => {
+    localStorage.setItem('noiteboa.lembrete', '1');
+    openScreen();
+
+    const caixa = await screen.findByRole('checkbox', { name: /Avisar às 23:00/ });
+    expect(caixa).toBeChecked();
+    fireEvent.click(caixa);
+
+    await waitFor(() => expect(localStorage.getItem('noiteboa.lembrete')).toBeNull());
+    expect(caixa).not.toBeChecked();
+  });
+
+  it('pede o horário de dormir quando a meta não tem', async () => {
+    fetchMock.mockImplementation(async (url) => {
+      const path = String(url);
+      if (path.includes('/api/me')) {
+        return jsonResponse({ id: 'u1', email: 'ana@exemplo.com', displayName: 'Ana', timezone: 'America/Sao_Paulo' });
+      }
+      return jsonResponse({ targetMinutes: 480, bedtime: null, wakeTime: null });
+    });
+    openScreen();
+
+    expect(await screen.findByText(/Defina o .Horário de dormir./)).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('reagenda o lembrete quando o horário de dormir muda', async () => {
+    localStorage.setItem('noiteboa.lembrete', '1');
+    openScreen();
+
+    fireEvent.change(await screen.findByLabelText('Horário de dormir'), { target: { value: '23:45' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Preferências salvas.');
+    await waitFor(() => expect(agendarLembrete).toHaveBeenCalledWith('23:45'));
+  });
+
+  it('cancela o lembrete se o horário de dormir for removido', async () => {
+    localStorage.setItem('noiteboa.lembrete', '1');
+    openScreen();
+
+    fireEvent.change(await screen.findByLabelText('Horário de dormir'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Preferências salvas.');
+    await waitFor(() => expect(cancelarLembrete).toHaveBeenCalled());
+    expect(agendarLembrete).not.toHaveBeenCalled();
   });
 });
