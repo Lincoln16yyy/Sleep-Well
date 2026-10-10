@@ -99,14 +99,17 @@ class FriendsRankingTest {
         User bruno = seedUser("bruno-rank@example.com", "Bruno", true);   // amigo que compartilha
         User carla = seedUser("carla-rank@example.com", "Carla", false);  // amiga que NÃO compartilha
         User davi = seedUser("davi-rank@example.com", "Davi", true);      // compartilha mas NÃO é amigo aceito
+        User elena = seedUser("elena-rank@example.com", "Elena", true);   // compartilha, mas o convite foi RECUSADO
         seedFriendship(ana, bruno, FriendshipStatus.ACCEPTED);
         seedFriendship(ana, carla, FriendshipStatus.ACCEPTED);
         seedFriendship(ana, davi, FriendshipStatus.PENDING);
+        seedFriendship(ana, elena, FriendshipStatus.DECLINED);
 
         for (int k = 1; k <= 3; k++) seedNight(ana, k);      // 3 noites em 7 dias
         for (int k = 1; k <= 6; k++) seedNight(bruno, k);    // 6 noites em 7 dias
         for (int k = 1; k <= 7; k++) seedNight(carla, k);    // semana perfeita, mas sem opt-in
         for (int k = 1; k <= 7; k++) seedNight(davi, k);     // semana perfeita, mas só convite pendente
+        for (int k = 1; k <= 7; k++) seedNight(elena, k);    // semana perfeita, mas convite recusado
 
         MvcResult res = mockMvc.perform(get("/api/friends/ranking?days=7")
                 .header("Authorization", "Bearer " + anaToken))
@@ -124,10 +127,14 @@ class FriendsRankingTest {
             .andReturn();
 
         // privacidade: sem opt-in ou sem amizade aceita = ausente do ranking,
-        // mesmo com semana perfeita de registro
+        // mesmo com semana perfeita de registro (vale para pending e declined)
         String body = res.getResponse().getContentAsString().toLowerCase();
         org.junit.jupiter.api.Assertions.assertFalse(body.contains("carla"), "Carla não compartilha e apareceu");
         org.junit.jupiter.api.Assertions.assertFalse(body.contains("davi"), "Davi não é amigo aceito e apareceu");
+        org.junit.jupiter.api.Assertions.assertFalse(body.contains("elena"), "Elena teve convite recusado e apareceu");
+        // e-mails nunca circulam no ranking — só nome de exibição
+        org.junit.jupiter.api.Assertions.assertFalse(body.contains("ana-rank@example.com"), "e-mail de Ana vazou");
+        org.junit.jupiter.api.Assertions.assertFalse(body.contains("bruno-rank@example.com"), "e-mail de Bruno vazou");
     }
 
     @Test
