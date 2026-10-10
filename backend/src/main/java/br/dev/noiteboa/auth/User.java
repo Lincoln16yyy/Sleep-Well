@@ -27,6 +27,10 @@ public class User {
     @Column(nullable = false, length = 64)
     private String timezone;
 
+    /** Opt-in explícito: só quem marca aparece no ranking de amigos (padrão desligado). */
+    @Column(name = "share_with_friends", nullable = false)
+    private boolean shareWithFriends;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -64,6 +68,14 @@ public class User {
 
     public void updateTimezone(String timezone) {
         this.timezone = timezone;
+    }
+
+    public boolean isShareWithFriends() {
+        return shareWithFriends;
+    }
+
+    public void setShareWithFriends(boolean shareWithFriends) {
+        this.shareWithFriends = shareWithFriends;
     }
 
     public OffsetDateTime getCreatedAt() {

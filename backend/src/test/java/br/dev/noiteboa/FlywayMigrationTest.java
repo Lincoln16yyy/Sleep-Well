@@ -35,7 +35,7 @@ class FlywayMigrationTest {
             .load();
         flyway.migrate();
 
-        assertEquals("3", flyway.info().current().getVersion().toString());
+        assertEquals("4", flyway.info().current().getVersion().toString());
 
         try (Connection c = DriverManager.getConnection(
                 "jdbc:postgresql://localhost:5432/sono?user=sono&password=sono_dev_only", "sono", "sono_dev_only");
@@ -56,6 +56,27 @@ class FlywayMigrationTest {
                 "SELECT id, '2026-10-02 06:00:00+00', '2026-10-01 22:00:00+00', 4 FROM users LIMIT 1");
             assertInsertFails(s, "INSERT INTO sleep_logs (user_id, sleep_start, sleep_end, quality) " +
                 "SELECT id, '2026-10-01 22:00:00+00', '2026-10-02 06:00:00+00', 7 FROM users LIMIT 1");
+
+            // V4: amizade — consentimento duplo com par único, pessoas distintas e status válidos
+            s.execute("INSERT INTO users (email, password_hash, display_name) VALUES ('c@d.com','x','C')");
+            s.execute("INSERT INTO friendships (id, requester_id, addressee_id, status) " +
+                      "SELECT gen_random_uuid(), a.id, b.id, 'PENDING' FROM users a, users b " +
+                      "WHERE a.email = 'a@b.com' AND b.email = 'c@d.com'");
+            assertInsertFails(s, "INSERT INTO friendships (id, requester_id, addressee_id) " +
+                "SELECT gen_random_uuid(), a.id, b.id FROM users a, users b " +
+                "WHERE a.email = 'a@b.com' AND b.email = 'c@d.com'");
+            assertInsertFails(s, "INSERT INTO friendships (id, requester_id, addressee_id, status) " +
+                "SELECT gen_random_uuid(), a.id, b.id, 'conhecidos' FROM users a, users b " +
+                "WHERE a.email = 'a@b.com' AND b.email = 'c@d.com'");
+            assertInsertFails(s, "INSERT INTO friendships (id, requester_id, addressee_id) " +
+                "SELECT gen_random_uuid(), a.id, a.id FROM users a LIMIT 1");
+
+            // otimista: share_with_friends nasce desligado (privacidade primeiro)
+            try (var rs = s.executeQuery("SELECT share_with_friends FROM users LIMIT 1")) {
+                if (rs.next() && rs.getBoolean(1)) {
+                    throw new AssertionError("share_with_friends deveria começar false");
+                }
+            }
         }
     }
 

@@ -95,4 +95,47 @@ class MeEndpointTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"timezone\":\"\"}"))
             .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void shareWithFriendsStartsDisabled() throws Exception {
+        String token = loginToken("share1@example.com");
+        mockMvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.shareWithFriends").value(false));
+    }
+
+    @Test
+    void shareWithFriendsTogglesAndPersists() throws Exception {
+        String token = loginToken("share2@example.com");
+        mockMvc.perform(put("/api/me").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"shareWithFriends\":true}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.shareWithFriends").value(true));
+        mockMvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.shareWithFriends").value(true));
+        mockMvc.perform(put("/api/me").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"shareWithFriends\":false}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.shareWithFriends").value(false));
+    }
+
+    @Test
+    void emptyUpdateReturns400() throws Exception {
+        String token = loginToken("share3@example.com");
+        mockMvc.perform(put("/api/me").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void timezoneAndShareTogetherInOneCall() throws Exception {
+        String token = loginToken("share4@example.com");
+        mockMvc.perform(put("/api/me").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"timezone\":\"UTC\",\"shareWithFriends\":true}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.timezone").value("UTC"))
+            .andExpect(jsonPath("$.shareWithFriends").value(true));
+    }
 }
