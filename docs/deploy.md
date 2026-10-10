@@ -105,6 +105,9 @@ Fluxo automático a cada push em `main`:
    gatilho `workflow_run`) chama a API da Render com o `commitId` do push
    (`POST /services/{id}/deploys`). O `render.yaml` usa `autoDeployTrigger: off`,
    ou seja, **este workflow é o único que dispara deploy**.
+   *Antes de disparar, ele confirma que o commit ainda é o HEAD da `main`: com
+   execuções concorrentes, um commit antigo nunca republica por cima de um mais
+   novo; se a consulta à API do GitHub falhar, não implanta.*
 3. Ele espera o status **`live`** (até 25 min; `build_failed`/`canceled` → job vermelho).
 4. **Smoke test** de produção — qualquer item vermelho falha o job:
    - `GET /actuator/health` → 200 e `"status":"UP"` (retenta até 5 min);
@@ -112,6 +115,10 @@ Fluxo automático a cada push em `main`:
    - front `/`, `/cadastro`, `/login`, `/dashboard` → 200 (guarda do rewrite SPA);
    - bundle `/assets/index-*.js` contém `noiteboa-api.onrender.com/api`
      (guarda da `VITE_API_URL`).
+
+Falha nos smoke = **versão nova já publicada e não validada** — não há rollback
+automático (rollback manual: Render Dashboard → `noiteboa-api` → Deploys → Rollback).
+O step final do workflow deixa isso explícito no log quando o job fica vermelho.
 
 Também pode disparar manualmente: **Actions → Deploy (GitHub Actions → Render) → Run workflow**.
 

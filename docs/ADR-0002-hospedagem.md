@@ -77,8 +77,10 @@ foram consultados nas páginas oficiais em **09/10/2026** e servem para a decis�
   relação a `checksPass`: a Render espera **todos** os checks do commit
   (docs oficiais: `render.com/docs/deploys`), então um smoke no mesmo commit
   validaria a instância antiga ou — se a produção estivesse fora — bloquearia o
-  deploy que consertaria o problema. Segredo único: `RENDER_API_KEY`
-  (GitHub Secrets; passo a passo em `docs/deploy.md`).
+  deploy que consertaria o problema. Antes de disparar, o workflow confirma que o
+  commit ainda é o HEAD da `main` (proteção contra republicação fora de ordem em
+  execuções concorrentes — a fila de `concurrency` não basta). Segredo único:
+  `RENDER_API_KEY` (GitHub Secrets; passo a passo em `docs/deploy.md`).
 
 ## Referências consultadas (09/10/2026)
 

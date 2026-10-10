@@ -8,6 +8,9 @@ name: Deploy (GitHub Actions → Render)
 # Motivo (docs oficiais: render.com/docs/deploys): com `checksPass` a Render espera
 # TODOS os checks do commit — um smoke no mesmo commit validaria a instância antiga
 # ou bloquearia o deploy se a produção estivesse fora.
+#
+# Atenção: `workflows: [CI]` referencia o `name:` do ci.yml — se esse nome mudar,
+# atualizar aqui (o workflow_run deixaria de disparar em silêncio).
 
 on:
   workflow_run:
@@ -32,6 +35,7 @@ jobs:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: srv-db4qmbg473hc738plhq0 # noiteboa-api (ID não é segredo; aparece na URL do dashboard)
       TRIGGER_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      GITHUB_TOKEN: ${{ github.token }} # somente leitura (contents: read) — para consultar o HEAD da main
       API_URL: https://noiteboa-api.onrender.com
       FRONT_URL: https://sleep-well-gray.vercel.app
     steps:
@@ -42,7 +46,31 @@ jobs:
             exit 1
           fi
 
+      - name: Continua só se este for o HEAD da main (não republica commit antigo)
+        id: guard
+        run: |
+          # Concorrência: pushes seguidos podem terminar a CI fora de ordem; sem este
+          # guard, um commit antigo seria publicado POR CIMA de um mais novo (e, com
+          # autoDeployTrigger: off, nada o republicaria). A fila de concurrency não
+          # basta: ela ordena os runs do workflow, não a ordem dos commits.
+          HEAD=$(curl -sS --max-time 20 -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/main" \
+            | jq -r '.sha // empty' 2>/dev/null) || HEAD=""
+          if [ -z "$HEAD" ]; then
+            echo "::error::Não foi possível consultar o HEAD da main — não se implanta por segurança."
+            exit 1
+          fi
+          echo "HEAD da main:  $HEAD"
+          echo "CI validou:    $TRIGGER_SHA"
+          if [ "$HEAD" != "$TRIGGER_SHA" ]; then
+            echo "::notice::Commit mais novo ($HEAD) já substituiu este ($TRIGGER_SHA) — deploy ignorado; o workflow do commit mais novo cuida da publicação."
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "superseded=false" >> "$GITHUB_OUTPUT"
+
       - name: Dispara o deploy do commit validado pela CI
+        if: steps.guard.outputs.superseded != 'true'
         id: trigger
         run: |
           BODY=$(jq -nc --arg sha "$TRIGGER_SHA" '{commitId: $sha}')
@@ -59,6 +87,7 @@ jobs:
           echo "id=$ID" >> "$GITHUB_OUTPUT"
 
       - name: Espera o deploy ficar live (máx. 25 min)
+        if: success() && steps.guard.outputs.superseded != 'true'
         run: |
           for i in $(seq 1 150); do
             RESP=$(curl -sS "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys/${{ steps.trigger.outputs.id }}" \
@@ -80,6 +109,7 @@ jobs:
           exit 1
 
       - name: Smoke — API de produção
+        if: success() && steps.guard.outputs.superseded != 'true'
         run: |
           echo "::group::GET /actuator/health"
           for i in $(seq 1 30); do
@@ -114,6 +144,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Smoke — front publicado (Vercel)
+        if: success() && steps.guard.outputs.superseded != 'true'
         run: |
           for P in "" cadastro login dashboard; do
             CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 "$FRONT_URL/$P" || true)
@@ -134,3 +165,12 @@ jobs:
             exit 1
           fi
           echo "bundle → API de produção ✓ ($ASSET)"
+
+      - name: Em caso de falha — leia antes de reagir
+        if: failure()
+        run: |
+          echo "::warning::Um job vermelho aqui NÃO significa rollback automático."
+          echo "Se o deploy foi disparado (passo 'Dispara o deploy' concluído), a versão nova JÁ ESTÁ publicada"
+          echo "na Render — os smoke tests é que falharam ao validá-la."
+          echo "Rollback manual, se necessário: Render Dashboard → serviço noiteboa-api → Deploys → Rollback."
+          echo "O passo que falhou aparece neste job, na aba Actions."
