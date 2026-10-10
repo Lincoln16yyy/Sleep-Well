@@ -1,0 +1,11 @@
+# Perfil de produção (Render). Ativado com SPRING_PROFILES_ACTIVE=prod.
+#
+# Ativa a exigência de JWT_SECRET no JwtService: se a variável de ambiente
+# JWT_SECRET estiver ausente, vazia ou for igual ao valor de desenvolvimento,
+# a aplicação falha na inicialização com mensagem clara e acionável.
+#
+# Antes esta linha era `JWT_SECRET: ${JWT_SECRET}` (auto-referência, pois a
+# chave yml tem o mesmo nome da variável), o que produzia o erro confuso
+# "Circular placeholder reference 'JWT_SECRET'". A validação agora vive no
+# código, e este arquivo apenas liga o requisito.
+JWT_SECRET_REQUIRED: true

@@ -1,0 +1,114 @@
+# Deploy manual (issue #33)
+
+Passo a passo para publicar o sistema completo com custo R$ 0. Cada passo **depende de
+você** (contas, segredos e cliques no dashboard); este documento é a fonte da verdade
+de como fazer. Valores entre `<chaves>` são placeholders — substitua pelos seus.
+
+> Arquitetura final: **Vercel** (React) → **Render** (API Spring Boot, Docker) →
+> **Neon** (PostgreSQL). Ver `docs/ADR-0002-hospedagem.md` para o porquê.
+
+## Pré-requisitos
+
+- Conta no [Render](https://dashboard.render.com/register) (sem cartão de crédito).
+- Projeto já criado no Neon com a string de conexão em mãos
+  (Console Neon → **Connect** → **Direct** e **Pooled**; usaremos a direct).
+- Projeto já publicado na Vercel (feito).
+
+## Passo 1 — Subir o back-end pela Blueprint (render.yaml)
+
+1. No dashboard da Render: **New → Blueprint**.
+2. Conecte o repositório `Lincoln16yyy/Sleep-Well` (branch `main`).
+3. A Render lê o `render.yaml` da raiz e propõe o serviço `noiteboa-api`
+   (Docker, `backend/Dockerfile`, health check `/actuator/health`).
+4. **Região:** escolha a mesma região do seu projeto Neon (ex.: Neon em Ohio →
+   Render `ohio`). Se o padrão (`oregon`) já coincidir, mantenha.
+5. Na criação, a Render pede os valores das variáveis com `sync: false` (Passo 2).
+
+## Passo 2 — Variáveis de ambiente do serviço `noiteboa-api`
+
+| Variável | Valor | De onde vem |
+|---|---|---|
+| `SPRING_PROFILES_ACTIVE` | `prod` | já vem fixa do `render.yaml` |
+| `DB_POOL_SIZE` | `5` | já vem fixa do `render.yaml` |
+| `JWT_SECRET` | gere um: `openssl rand -base64 48` | você gera; guarde no gerenciador de senhas |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://<host-do-neon>/<banco>?sslmode=require` | Neon → Connect (veja formato abaixo) |
+| `SPRING_DATASOURCE_USERNAME` | usuário do Neon | Neon → Connect |
+| `SPRING_DATASOURCE_PASSWORD` | senha do Neon | Neon → Connect |
+| `CORS_ALLOWED_ORIGIN` | `https://<app-do-front>.vercel.app` | domínio do front na Vercel |
+
+**Formato do `SPRING_DATASOURCE_URL`:** o Neon entrega algo como
+`postgres://usuario:senha@ep-exemplo-abc123.aws.neon.tech/neondb?sslmode=require`.
+Transforme em:
+
+```
+jdbc:postgresql://ep-exemplo-abc123.aws.neon.tech/neondb?sslmode=require
+```
+
+- troque `postgres://` por `jdbc:postgresql://`;
+- **remova** `usuario:senha` da URL (eles vão em `SPRING_DATASOURCE_USERNAME`/`PASSWORD`);
+- mantenha `sslmode=require` (o Neon exige SSL).
+
+> **Se a Render falhar no boot** com `IllegalStateException: JWT_SECRET não
+> configurada (perfil prod)...` (o log mostra `Application run failed` com essa
+> causa): a variável `JWT_SECRET` não foi definida, está vazia ou é igual ao
+> valor de desenvolvimento. Defina-a no dashboard e faça redeploy. A proteção
+> vive no `JwtService` e é ligada por `JWT_SECRET_REQUIRED: true` no
+> `application-prod.yml` — **não** remova essa linha para "consertar": liberaria
+> o segredo de desenvolvimento em produção.
+
+## Passo 3 — Apontar o front-end para a API (Vercel)
+
+1. Vercel → seu projeto → **Settings → Environment Variables**.
+2. Crie `VITE_API_URL` = `https://<servico-da-api>.onrender.com/api`
+   (o nome do serviço + `.onrender.com` aparece na página do serviço na Render).
+3. Faça um **redeploy** do front-end (o Vite embute a URL no build — mudar a
+   variável sozinha não reaplica em deploy antigo).
+
+## Passo 4 — Validação obrigatória (antes de considerar o deploy concluído)
+
+Rode nesta ordem e **não pule nenhuma**:
+
+1. **Health check:**
+   ```bash
+   curl -s https://<servico-da-api>.onrender.com/actuator/health
+   # esperado: {"status":"UP"}
+   ```
+   (primeira chamada pode levar ~1 minuto — a instância free acorda.)
+2. **Flyway:** nos logs do serviço, confira as linhas de migração no boot; e no
+   Neon (SQL Editor):
+   ```sql
+   SELECT installed_rank, version, description, success
+   FROM flyway_schema_history ORDER BY installed_rank;
+   ```
+   esperado: versões `1` a `4`, todas com `success = true`.
+3. **Sem segredos nos logs:** procure nos logs se `JWT_SECRET`/senha aparecem
+   (não devem).
+4. **Cadastro + login pela API:**
+   ```bash
+   curl -s -X POST https://<servico-da-api>.onrender.com/api/auth/register \
+     -H 'Content-Type: application/json' \
+     -d '{"email":"deploy-teste@example.com","password":"<senha-de-teste>","displayName":"Deploy"}'
+   ```
+5. **Front-end ponta a ponta:** acesse o app na Vercel, cadastre-se, faça login,
+   registre uma noite de sono e recarregue — os dados precisam persistir (prova
+   de que front → API → Neon funciona).
+6. **CORS:** na aba Network do navegador, a chamada para `/api/...` deve ter
+   status 200 (sem erro de origem) e o header `access-control-allow-origin`
+   correspondente a `CORS_ALLOWED_ORIGIN`.
+
+## Limites conhecidos do plano free
+
+- Render: serviço dorme após 15 min sem tráfego (cold start ~1 min);
+  750 horas de instância/mês por workspace.
+- Neon: scale-to-zero após 5 min; 0,5 GB de storage e 100 CU-horas/mês por projeto.
+- Filesystem da Render é efêmero (tudo que importa está no Neon).
+
+## Checklist para fechar a issue #33
+
+- [x] ADR escrita (`docs/ADR-0002-hospedagem.md`) — neste PR.
+- [ ] Blueprint sincronizada e serviço `noiteboa-api` na Render em estado **Live**.
+- [ ] Variáveis de ambiente preenchidas (Passo 2) — feito por humano.
+- [ ] `GET /actuator/health` respondendo `{"status":"UP"}` no endereço público.
+- [ ] Flyway com V1..V4 `success = true` no banco do Neon.
+- [ ] Fluxo completo (cadastro → login → registro de sono) funcionando no front publicado.
+- [ ] Workflow de deploy contínuo — issue separada (nova issue `agente:revisar`).
