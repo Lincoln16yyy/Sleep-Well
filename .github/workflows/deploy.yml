@@ -1,0 +1,176 @@
+name: Deploy (GitHub Actions → Render)
+
+# Issue #83 — deploy contínuo explícito:
+#   push em main → CI verde → este workflow dispara o deploy na Render via API,
+#   espera o status `live` e roda smoke test de produção (falha = job vermelho).
+#
+# O render.yaml usa `autoDeployTrigger: off`: este workflow é o único gatilho.
+# Motivo (docs oficiais: render.com/docs/deploys): com `checksPass` a Render espera
+# TODOS os checks do commit — um smoke no mesmo commit validaria a instância antiga
+# ou bloquearia o deploy se a produção estivesse fora.
+#
+# Atenção: `workflows: [CI]` referencia o `name:` do ci.yml — se esse nome mudar,
+# atualizar aqui (o workflow_run deixaria de disparar em silêncio).
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: srv-db4qmbg473hc738plhq0 # noiteboa-api (ID não é segredo; aparece na URL do dashboard)
+      TRIGGER_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      GITHUB_TOKEN: ${{ github.token }} # somente leitura (contents: read) — para consultar o HEAD da main
+      API_URL: https://noiteboa-api.onrender.com
+      FRONT_URL: https://sleep-well-gray.vercel.app
+    steps:
+      - name: Secret RENDER_API_KEY configurado?
+        run: |
+          if [ -z "$RENDER_API_KEY" ]; then
+            echo "::error::Secret RENDER_API_KEY ausente — Settings → Secrets and variables → Actions (passo a passo em docs/deploy.md)."
+            exit 1
+          fi
+
+      - name: Continua só se este for o HEAD da main (não republica commit antigo)
+        id: guard
+        run: |
+          # Concorrência: pushes seguidos podem terminar a CI fora de ordem; sem este
+          # guard, um commit antigo seria publicado POR CIMA de um mais novo (e, com
+          # autoDeployTrigger: off, nada o republicaria). A fila de concurrency não
+          # basta: ela ordena os runs do workflow, não a ordem dos commits.
+          HEAD=$(curl -sS --max-time 20 -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/main" \
+            | jq -r '.sha // empty' 2>/dev/null) || HEAD=""
+          if [ -z "$HEAD" ]; then
+            echo "::error::Não foi possível consultar o HEAD da main — não se implanta por segurança."
+            exit 1
+          fi
+          echo "HEAD da main:  $HEAD"
+          echo "CI validou:    $TRIGGER_SHA"
+          if [ "$HEAD" != "$TRIGGER_SHA" ]; then
+            echo "::notice::Commit mais novo ($HEAD) já substituiu este ($TRIGGER_SHA) — deploy ignorado; o workflow do commit mais novo cuida da publicação."
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "superseded=false" >> "$GITHUB_OUTPUT"
+
+      - name: Dispara o deploy do commit validado pela CI
+        if: steps.guard.outputs.superseded != 'true'
+        id: trigger
+        run: |
+          BODY=$(jq -nc --arg sha "$TRIGGER_SHA" '{commitId: $sha}')
+          RESP=$(curl -sS -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$BODY") || true
+          ID=$(echo "$RESP" | jq -r '.deploy.id // .id // empty' 2>/dev/null) || ID=""
+          if [ -z "$ID" ]; then
+            echo "::error::API da Render recusou o deploy (409 = outro deploy em andamento; aguarde e reexecute): $RESP"
+            exit 1
+          fi
+          echo "Deploy $ID disparado (commit $TRIGGER_SHA)"
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+
+      - name: Espera o deploy ficar live (máx. 25 min)
+        if: success() && steps.guard.outputs.superseded != 'true'
+        run: |
+          for i in $(seq 1 150); do
+            RESP=$(curl -sS "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys/${{ steps.trigger.outputs.id }}" \
+              -H "Authorization: Bearer $RENDER_API_KEY") || true
+            ST=$(echo "$RESP" | jq -r '.deploy.status // .status // "sem-status"' 2>/dev/null) || ST="sem-status"
+            echo "[$((i * 10))s] status: $ST"
+            case "$ST" in
+              live)
+                echo "Deploy live ✓"
+                exit 0 ;;
+              *fail*|canceled|deactivated)
+                echo "::error::Deploy terminou em estado '$ST'"
+                echo "$RESP"
+                exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::Timeout de 25 min esperando o deploy ficar live."
+          exit 1
+
+      - name: Smoke — API de produção
+        if: success() && steps.guard.outputs.superseded != 'true'
+        run: |
+          echo "::group::GET /actuator/health"
+          for i in $(seq 1 30); do
+            CODE=$(curl -s -o /tmp/health.json -w "%{http_code}" --max-time 20 "$API_URL/actuator/health" || true)
+            ST=$(jq -r '.status // empty' /tmp/health.json 2>/dev/null) || ST=""
+            if [ "$CODE" = "200" ] && [ "$ST" = "UP" ]; then
+              echo "health UP ✓"
+              break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "::error::API fora do ar: HTTP $CODE, status=$ST"
+              cat /tmp/health.json 2>/dev/null || true
+              exit 1
+            fi
+            echo "tentativa $i: HTTP $CODE status=$ST — nova tentativa em 10s"
+            sleep 10
+          done
+          echo "::endgroup::"
+
+          echo "::group::Preflight CORS"
+          HEADERS=$(curl -s -o /dev/null -D - -X OPTIONS "$API_URL/api/sleep-logs" \
+            -H "Origin: $FRONT_URL" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: authorization,content-type" \
+            --max-time 20 | tr -d '\r') || true
+          ALLOW=$(echo "$HEADERS" | grep -i '^access-control-allow-origin:' | awk '{print $2}') || ALLOW=""
+          if [ "$ALLOW" != "$FRONT_URL" ]; then
+            echo "::error::CORS: allow-origin='$ALLOW' (esperado '$FRONT_URL')"
+            exit 1
+          fi
+          echo "CORS ✓ ($ALLOW)"
+          echo "::endgroup::"
+
+      - name: Smoke — front publicado (Vercel)
+        if: success() && steps.guard.outputs.superseded != 'true'
+        run: |
+          for P in "" cadastro login dashboard; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 "$FRONT_URL/$P" || true)
+            if [ "$CODE" != "200" ]; then
+              echo "::error::$FRONT_URL/$P → HTTP $CODE"
+              exit 1
+            fi
+            echo "/$P → 200 ✓"
+          done
+          HTML=$(curl -s --max-time 25 "$FRONT_URL/" || true)
+          ASSET=$(echo "$HTML" | grep -oE '/assets/index-[^"]+\.js' | head -1) || ASSET=""
+          if [ -z "$ASSET" ]; then
+            echo "::error::HTML sem bundle /assets/index-*.js"
+            exit 1
+          fi
+          if ! curl -s --max-time 30 "$FRONT_URL$ASSET" | grep -q 'onrender\.com/api'; then
+            echo "::error::bundle $ASSET não referencia noiteboa-api.onrender.com/api (VITE_API_URL no build da Vercel?)"
+            exit 1
+          fi
+          echo "bundle → API de produção ✓ ($ASSET)"
+
+      - name: Em caso de falha — leia antes de reagir
+        if: failure()
+        run: |
+          echo "::warning::Um job vermelho aqui NÃO significa rollback automático."
+          echo "Se o deploy foi disparado (passo 'Dispara o deploy' concluído), a versão nova JÁ ESTÁ publicada"
+          echo "na Render — os smoke tests é que falharam ao validá-la."
+          echo "Rollback manual, se necessário: Render Dashboard → serviço noiteboa-api → Deploys → Rollback."
+          echo "O passo que falhou aparece neste job, na aba Actions."
